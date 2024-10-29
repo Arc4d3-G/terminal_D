@@ -33,7 +33,7 @@ function App() {
   const [inputValue, setInputValue] = useState('');
   const [lineHistory, setLineHistory] = useState<Array<string>>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const mainInput = useRef<HTMLDivElement | null>(null);
+  const mainInput = useRef<HTMLInputElement | null>(null);
   const inputDiv = useRef<HTMLDivElement | null>(null);
 
   // set input value on change
