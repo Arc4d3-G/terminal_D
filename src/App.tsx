@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import styled, { ThemeProvider } from 'styled-components';
 import './App.css';
-import { dark, retro, Theme } from './utils/themes';
+import { dark, Theme } from './utils/themes';
+import { createCommands, HEADER } from './utils/commands';
 
 const Blanket = styled.div`
   height: 100%;
@@ -36,6 +37,19 @@ function App() {
   const mainInput = useRef<HTMLInputElement | null>(null);
   const inputDiv = useRef<HTMLDivElement | null>(null);
 
+  const getTheme = () => {
+    return theme;
+  };
+
+  // set isLoading to true/false
+  const handleLoading = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+  };
+
+  const COMMANDS = createCommands(setTheme, getTheme /*handleLoading*/);
   // set input value on change
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
@@ -44,7 +58,7 @@ function App() {
   // handle "ENTER", adding input value to lineHistory
   const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      setLineHistory([...lineHistory, inputValue]); // TODO figure out why this set line is slower than the one in handleLoading??
+      setLineHistory([...lineHistory, inputValue]);
       getResponse(inputValue);
       setInputValue('');
     }
@@ -59,27 +73,15 @@ function App() {
 
   // evaluate input and return response
   const getResponse = (inputValue: string) => {
-    if (inputValue === 'load') {
-      handleLoading(inputValue);
+    if (COMMANDS[inputValue]) {
+      setLineHistory([...lineHistory, inputValue, COMMANDS[inputValue].execute()]);
+    } else {
+      setLineHistory([
+        ...lineHistory,
+        inputValue,
+        `The term '${inputValue}' is not recognized as the name of a cmdlet`,
+      ]);
     }
-    if (inputValue === 'retro') {
-      setTheme(retro);
-    }
-    if (inputValue === 'dark') {
-      setTheme(dark);
-    }
-  };
-
-  // set isLoading to true/false
-  const handleLoading = (inputValue: string) => {
-    console.log(lineHistory);
-    setIsLoading(true);
-    setLineHistory([...lineHistory, inputValue, 'LOADING']);
-    setTimeout(() => {
-      console.log('load started');
-      setIsLoading(false);
-      console.log('load ended');
-    }, 3000);
   };
 
   // while isLoading, prevent input
@@ -105,13 +107,13 @@ function App() {
     console.log('useEffect');
   }, [lineHistory]);
 
-  const lineHead = '> ';
+  const lineHead = '$ ';
   return (
     <ThemeProvider theme={theme}>
       <Blanket onClick={setFocus}>
         <Main>
           <Lines>
-            <>&gt; TEST LINE</>
+            <pre style={{ marginBottom: '1rem' }}>{HEADER}</pre>
             {lineHistory.map((line, index) => (
               <Line
                 key={index}
