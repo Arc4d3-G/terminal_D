@@ -11,7 +11,9 @@ const Blanket = styled.div`
   color: ${({ theme }) => theme.font};
 `;
 const Main = styled.div`
-  padding: 10px;
+  padding: 10px 15px;
+  width: 100%;
+  height: 100%;
 `;
 const Lines = styled.div``;
 
@@ -49,7 +51,8 @@ function App() {
     }, 3000);
   };
 
-  const COMMANDS = createCommands(setTheme, getTheme /*handleLoading*/);
+  const COMMANDS = createCommands(setTheme, getTheme /*handleLoading*/, setLineHistory);
+
   // set input value on change
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
@@ -74,7 +77,10 @@ function App() {
   // evaluate input and return response
   const getResponse = (inputValue: string) => {
     if (COMMANDS[inputValue]) {
-      setLineHistory([...lineHistory, inputValue, COMMANDS[inputValue].execute()]);
+      const response = COMMANDS[inputValue].execute();
+      if (response != '') {
+        setLineHistory([...lineHistory, inputValue, response]);
+      }
     } else {
       setLineHistory([
         ...lineHistory,

@@ -1,3 +1,4 @@
+import { Dispatch, SetStateAction } from 'react';
 import { Theme, dark, retro } from './themes.tsx';
 
 type Command = {
@@ -6,9 +7,10 @@ type Command = {
 };
 
 export const createCommands = (
-  setTheme: React.Dispatch<React.SetStateAction<Theme>>,
-  getTheme: () => Theme
-  // handleLoading: () => void
+  setTheme: Dispatch<SetStateAction<Theme>>,
+  getTheme: () => Theme,
+  // handleLoading: () => void,
+  setLineHistory: Dispatch<SetStateAction<string[]>>
 ): Record<string, Command> => {
   return {
     ['retro']: {
@@ -33,14 +35,22 @@ export const createCommands = (
         }
       },
     },
+    ['clear']: {
+      description:
+        'Clear the terminal screen, removing all previous commands and output displayed.',
+      execute: () => {
+        setLineHistory([]);
+        return '';
+      },
+    },
   };
 };
 
 export const HEADER = `
-████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██            ██████  
-   ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██            ██   ██ 
-   ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██      █████ ██   ██ 
-   ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██            ██   ██ 
-   ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████       ██████  
+████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████  
+   ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██           ██   ██ 
+   ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██    █████  ██   ██ 
+   ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██           ██   ██ 
+   ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████  
                                     A Terminal Themed Portfolio By Dewald Breed
 `;
