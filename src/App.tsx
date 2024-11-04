@@ -32,7 +32,7 @@ const Input = styled.input`
 
 function App() {
   const [theme, setTheme] = useState<Theme>(dark);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // const [isLoading, setIsLoading] = useState<boolean>(false);
   const [inputValue, setInputValue] = useState('');
   const [lineHistory, setLineHistory] = useState<Array<string>>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -44,12 +44,12 @@ function App() {
   };
 
   // set isLoading to true/false
-  const handleLoading = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
-  };
+  // const handleLoading = () => {
+  //   setIsLoading(true);
+  //   setTimeout(() => {
+  //     setIsLoading(false);
+  //   }, 3000);
+  // };
 
   const COMMANDS = createCommands(setTheme, getTheme /*handleLoading*/, setLineHistory);
 
@@ -91,18 +91,18 @@ function App() {
   };
 
   // while isLoading, prevent input
-  useEffect(() => {
-    if (isLoading) {
-      if (inputDiv.current) {
-        inputDiv.current.style.display = 'none';
-      }
-    } else {
-      if (inputDiv.current) {
-        inputDiv.current.style.display = 'block';
-        setFocus();
-      }
-    }
-  }, [isLoading]);
+  // useEffect(() => {
+  //   if (isLoading) {
+  //     if (inputDiv.current) {
+  //       inputDiv.current.style.display = 'none';
+  //     }
+  //   } else {
+  //     if (inputDiv.current) {
+  //       inputDiv.current.style.display = 'block';
+  //       setFocus();
+  //     }
+  //   }
+  // }, [isLoading]);
 
   // Auto scroll to bottom
   useEffect(() => {
