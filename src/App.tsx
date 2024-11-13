@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import styled, { ThemeProvider } from 'styled-components';
 import './App.css';
 import { dark, Theme } from './utils/themes';
-import { createCommands, HEADER } from './utils/commands';
+import { createCommands, HEADER, parseInput } from './utils/commands';
 
 const Blanket = styled.div`
   height: 100%;
@@ -88,6 +88,7 @@ function App() {
       }
       getResponse(inputValue);
       setInputValue('');
+      setHistoryIndex(-1);
     }
 
     if (event.key === 'ArrowUp') {
@@ -127,24 +128,24 @@ function App() {
   const getResponse = (inputValue: string) => {
     const newLine = lineHead + inputValue;
 
-    // Regex to split by spaces, respecting quoted substrings
-    const inputArr = (inputValue.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map((arg) =>
-      arg.replace(/(^"|"$)/g, '')
-    );
-
-    // Remove quotes around quoted substrings
-    inputArr.map((arg) => arg.replace(/(^"|"$)/g, ''));
-
-    const [command, ...args] = inputArr;
+    const { command, args, options } = parseInput(inputValue);
 
     if (command && COMMANDS[command]) {
-      const response = COMMANDS[command].execute(args);
-      if (response != '') {
-        setLineHistory([...lineHistory, newLine, response]);
+      const cmd = COMMANDS[command];
+
+      // Check if args are allowed and if any were provided when they shouldn’t be
+      if (!cmd.argsAllowed && args.length > 0) {
+        setLineHistory([
+          ...lineHistory,
+          newLine,
+          `Command "${command}" does not accept arguments.`,
+        ]);
+      } else {
+        const response = cmd.execute(args, options);
+        setLineHistory([...lineHistory, newLine, response || '']);
       }
     } else {
-      const emptyResponse =
-        inputValue.trim() === '' ? inputValue : `Unsupported Command: ${inputValue}`;
+      const emptyResponse = inputValue.trim() === '' ? '' : `Unsupported Command: ${inputValue}`;
       setLineHistory([...lineHistory, newLine, emptyResponse]);
     }
   };

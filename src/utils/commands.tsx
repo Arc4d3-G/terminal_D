@@ -3,7 +3,37 @@ import { Theme, dark, retro } from './themes.tsx';
 
 type Command = {
   description: string;
-  execute: (args: Array<string | null>) => string;
+  argsAllowed: boolean;
+  execute: (args: string[], options: Record<string, string | boolean>) => string;
+};
+
+type ParsedInput = {
+  command: string;
+  args: string[];
+  options: Record<string, string | boolean>;
+};
+
+export const parseInput = (input: string): ParsedInput => {
+  // Split by spaces, respecting quoted substrings
+  const inputArr = (input.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map(
+    (arg) => arg.replace(/(^"|"$)/g, '') // Remove quotes around quoted substrings
+  );
+
+  const [command, ...rest] = inputArr;
+  const args: string[] = [];
+  const options: Record<string, string | boolean> = {};
+
+  rest.forEach((part) => {
+    if (part.startsWith('-')) {
+      // If option has an '=', treat it as key-value; otherwise, it's a boolean flag
+      const [option, value] = part.split('=');
+      options[option] = value ?? true;
+    } else {
+      args.push(part);
+    }
+  });
+
+  return { command, args, options };
 };
 
 export const createCommands = (
@@ -14,6 +44,7 @@ export const createCommands = (
   return {
     ['retro']: {
       description: 'Set the theme to "retro" mode.',
+      argsAllowed: false,
       execute: () => {
         if (getTheme() !== retro) {
           setTheme(retro);
@@ -25,6 +56,7 @@ export const createCommands = (
     },
     ['dark']: {
       description: 'Set the theme to "dark" mode.',
+      argsAllowed: false,
       execute: () => {
         if (getTheme() !== dark) {
           setTheme(dark);
@@ -37,16 +69,19 @@ export const createCommands = (
     ['clear']: {
       description:
         'Clear the terminal screen, removing all previous commands and output displayed.',
+      argsAllowed: false,
       execute: () => {
         setLineHistory([]);
         return '';
       },
     },
     ['date']: {
-      description: 'Returns the current date/time.',
-      execute: (args) => {
-        const [arg1, dateString] = args;
-        if (arg1 === '-d' && dateString) {
+      description: 'Returns the current date/time. Options: -d=[dateString] to specify a date.',
+      argsAllowed: true,
+      execute: (args, options) => {
+        const dateString = options['-d'] as string | undefined;
+
+        if (dateString) {
           return getDate(dateString);
         } else {
           return getDate();
