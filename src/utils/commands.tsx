@@ -80,7 +80,7 @@ export const createCommands = (
       argsAllowed: true,
       execute: (args, options) => {
         const dateString = options['-d'] as string | undefined;
-
+        console.log(args);
         if (dateString) {
           return getDate(dateString);
         } else {
