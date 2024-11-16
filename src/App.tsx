@@ -10,18 +10,28 @@ const Blanket = styled.div`
   background: ${({ theme }) => theme.bg};
   color: ${({ theme }) => theme.font};
 `;
+
+const Header = styled.pre`
+  font-family: 'UbuntuMono';
+`;
 const Main = styled.div`
-  margin-left: 10px;
-  /* padding: 1rem; */
+  padding: 10px 10px 10px 20px;
 `;
 const Lines = styled.div``;
 const Line = styled.div``;
-const Prompt = styled.div``;
-const PromptSpan = styled.span``;
-const CaretSpan = styled.span`
-  position: relative;
-  width: 0.6rem;
-  background-color: white;
+const Prompt = styled.div`
+  display: flex;
+  align-items: flex-start;
+`;
+const CaretSpan = styled.span<{
+  $leftPosition: number;
+}>`
+  position: absolute;
+  left: ${({ $leftPosition }) => `${$leftPosition}ch`};
+  width: 1ch;
+  /* margin: 0.25rem 0px 0.25rem 0px; */
+  height: 1em;
+  background-color: ${({ theme }) => theme.font};
   animation: blink 1s steps(2, start) infinite;
   pointer-events: none;
   cursor: none;
@@ -29,7 +39,7 @@ const CaretSpan = styled.span`
   @keyframes blink {
     0%,
     50% {
-      opacity: 1;
+      opacity: 0.75;
     }
     50.1%,
     100% {
@@ -38,37 +48,39 @@ const CaretSpan = styled.span`
   }
 `;
 
-const HiddenInput = styled.input`
-  width: 0px;
-  height: 0px;
-  border: none;
-  outline: none;
-  color: transparent;
-  background-color: transparent;
-  padding: 0px;
-  margin: 0px;
-`;
-// const Input = styled.input`
-//   background-color: transparent;
+// const HiddenInput = styled.input`
+//   /* width: 0px; */
+//   /* height: 2rem; */
 //   border: none;
 //   outline: none;
-//   color: transparent;
-//   font-size: inherit;
-//   font-family: inherit;
+//   /* color: transparent; */
+//   background-color: transparent;
 //   padding: 0px;
-//   caret-color: transparent; /* Hide the default caret */
+//   margin: 0px;
 // `;
+const Input = styled.input`
+  margin-left: 1ch;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0px;
+  caret-color: transparent;
+`;
 
 function App() {
+  const lineHead = 'guest@terminalD:~$';
+  const lineHeadLength = lineHead.length + 3;
   const [theme, setTheme] = useState<Theme>(dark);
   const [inputValue, setInputValue] = useState('');
+  const [caretLeft, setCaretLeft] = useState(lineHeadLength);
   const [lineHistory, setLineHistory] = useState<Array<string>>([]);
   const [commandHistory, setCommandHistory] = useState<Array<string>>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const mainInput = useRef<HTMLInputElement | null>(null);
-  const lineHead = 'guest@terminalD:~$ ';
-
   const getTheme = () => {
     return theme;
   };
@@ -77,42 +89,79 @@ function App() {
 
   // set input value on change
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const curInputLen = event.target.value.length;
+    const previousInputLen = inputValue.length;
+    // const endOfInput = curInputLen + lineHeadLength;
+    // const curCaretPos = caretLeft;
+    if (curInputLen > previousInputLen) {
+      setCaretLeft(caretLeft + 1);
+    }
+
     setInputValue(event.target.value);
   };
 
   // handle key presses
   const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      if (!commandHistory.includes(inputValue) && inputValue.trim() != '') {
-        setCommandHistory([inputValue, ...commandHistory]);
+      if (inputValue.trim() != '') {
+        if (!commandHistory.includes(inputValue)) {
+          setCommandHistory([inputValue, ...commandHistory]);
+        } else {
+          const tempHistory = commandHistory.filter((line) => line !== inputValue);
+          setCommandHistory([inputValue, ...tempHistory]);
+        }
       }
       getResponse(inputValue);
       setInputValue('');
+      setCaretLeft(lineHeadLength);
       setHistoryIndex(-1);
     }
 
     if (event.key === 'ArrowUp') {
-      console.log(historyIndex);
+      event.preventDefault();
       if (mainInput.current && commandHistory.length > 0) {
         if (historyIndex < commandHistory.length - 1) {
+          const newCommand = commandHistory[historyIndex + 1];
           setHistoryIndex(historyIndex + 1);
-          setInputValue(commandHistory[historyIndex + 1]);
-        } else {
-          setInputValue(commandHistory[historyIndex]);
+          setInputValue(newCommand);
+          setCaretLeft(newCommand.length + lineHeadLength);
+          if (mainInput.current) {
+            mainInput.current.setSelectionRange(-1, -1);
+          }
         }
       }
     }
 
     if (event.key === 'ArrowDown') {
-      console.log(historyIndex);
       if (mainInput.current && commandHistory.length > 0) {
         if (historyIndex > 0) {
+          const newCommand = commandHistory[historyIndex - 1];
           setHistoryIndex(historyIndex - 1);
-          setInputValue(commandHistory[historyIndex - 1]);
+          setInputValue(newCommand);
+          setCaretLeft(newCommand.length + lineHeadLength);
         } else {
           setHistoryIndex(-1); // Reset index when reaching the end
           setInputValue(''); // Clear input when reaching beyond the start CHANGE THIS TO use original input value instead
+          setCaretLeft(lineHeadLength);
         }
+      }
+    }
+
+    if (event.key === 'Backspace') {
+      if (caretLeft > lineHeadLength) {
+        setCaretLeft(caretLeft - 1);
+      }
+    }
+
+    if (event.key === 'ArrowLeft') {
+      if (caretLeft > lineHeadLength) {
+        setCaretLeft(caretLeft - 1);
+      }
+    }
+
+    if (event.key === 'ArrowRight') {
+      if (caretLeft < inputValue.length + lineHeadLength) {
+        setCaretLeft(caretLeft + 1);
       }
     }
   };
@@ -126,8 +175,7 @@ function App() {
 
   // evaluate input and return response
   const getResponse = (inputValue: string) => {
-    const newLine = lineHead + inputValue;
-
+    const newLine = `${lineHead} ${inputValue}`;
     const { command, args, options } = parseInput(inputValue);
 
     if (command && COMMANDS[command]) {
@@ -142,7 +190,10 @@ function App() {
         ]);
       } else {
         const response = cmd.execute(args, options);
-        setLineHistory([...lineHistory, newLine, response || '']);
+
+        if (response != '') {
+          setLineHistory([...lineHistory, newLine, response]);
+        }
       }
     } else {
       const emptyResponse = inputValue.trim() === '' ? '' : `Unsupported Command: ${inputValue}`;
@@ -162,7 +213,7 @@ function App() {
       <Blanket onClick={setFocus}>
         <Main>
           <Lines>
-            <pre>{HEADER}</pre>
+            <Header>{HEADER}</Header>
             {lineHistory.map((line, index) => (
               <Line
                 key={index}
@@ -173,19 +224,17 @@ function App() {
             ))}
           </Lines>
           <Prompt>
-            <HiddenInput
+            {lineHead}
+            <CaretSpan $leftPosition={caretLeft} />
+            <Input
               ref={mainInput}
               autoFocus
               type='text'
               value={inputValue}
               onChange={(e) => handleInputChange(e)}
               onKeyDown={(e) => handleKeyPress(e)}
-            />
-            {lineHead}
-            <PromptSpan>
-              {inputValue}
-              <CaretSpan>|</CaretSpan>
-            </PromptSpan>
+            ></Input>
+
             <div ref={bottomRef} />
           </Prompt>
         </Main>
