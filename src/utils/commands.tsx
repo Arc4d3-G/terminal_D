@@ -1,23 +1,25 @@
 import { Dispatch, SetStateAction } from 'react';
 import { Theme, dark, retro } from './themes.tsx';
+import supabase from './supabase.ts';
+import { Session } from '@supabase/supabase-js';
 
 type Command = {
   description: string;
   argsAllowed: boolean;
-  execute: (args: string[], options: Record<string, string | boolean>) => string;
+  execute: (args: string[], options: Record<string, string | boolean>) => string | Promise<string>;
 };
 
 type ParsedInput = {
-  command: string;
+  command: string | undefined;
   args: string[];
   options: Record<string, string | boolean>;
 };
 
 export const parseInput = (input: string): ParsedInput => {
   // Split by spaces, respecting quoted substrings
-  const inputArr = (input.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map(
-    (arg) => arg.replace(/(^"|"$)/g, '') // Remove quotes around quoted substrings
-  );
+  const inputArr = (input.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map((part) => {
+    return part.replace(/['"]/g, '');
+  });
 
   const [command, ...rest] = inputArr;
   const args: string[] = [];
@@ -32,14 +34,16 @@ export const parseInput = (input: string): ParsedInput => {
       args.push(part);
     }
   });
-
+  console.log({ command, args, options });
   return { command, args, options };
 };
 
 export const createCommands = (
   setTheme: Dispatch<SetStateAction<Theme>>,
   getTheme: () => Theme,
-  setLineHistory: Dispatch<SetStateAction<string[]>>
+  setLoading: Dispatch<SetStateAction<boolean>>,
+  setLineHistory: Dispatch<SetStateAction<string[]>>,
+  setSession: Dispatch<SetStateAction<Session | null>>
 ): Record<string, Command> => {
   return {
     ['retro']: {
@@ -76,8 +80,9 @@ export const createCommands = (
       },
     },
     ['date']: {
-      description: 'Returns the current date/time. Options: -d=[dateString] to specify a date.',
-      argsAllowed: true,
+      // TODO add an arg?
+      description: 'Returns the current date/time. Options: -d="dateString" to specify a date.',
+      argsAllowed: false,
       execute: (args, options) => {
         const dateString = options['-d'] as string | undefined;
         console.log(args);
@@ -85,6 +90,86 @@ export const createCommands = (
           return getDate(dateString);
         } else {
           return getDate();
+        }
+      },
+    },
+    ['load']: {
+      description: 'test',
+      argsAllowed: false,
+      execute: async () => {
+        setLoading(true);
+
+        try {
+          const result = await simulateAsync(5000); // Wait for the promise to resolve
+          setLoading(false); // Turn off loading after promise resolution
+
+          if (result === 'Done') {
+            return 'done loading';
+          } else {
+            return 'Something went wrong';
+          }
+        } catch (error) {
+          setLoading(false); // Ensure loading state is reset even if an error occurs
+          return `Error: ${error}`;
+        }
+      },
+    },
+    ['login']: {
+      description:
+        "Login or Register a user account. Arguments: 'new' to register. Options: -email=[emailAddress] to provide email to login/register, -pass=[password] to provide password to login/register.",
+      argsAllowed: true,
+      execute: async (args, options) => {
+        setLoading(true);
+        const isNew = args[0] == 'new';
+        const email = options['-email'] as string | undefined;
+        const password = options['-pass'] as string | undefined;
+
+        try {
+          if (isNew) {
+            if (email && password) {
+              // Register
+              const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+              });
+
+              if (error) {
+                throw new Error(error.message);
+              }
+
+              setSession(data.session);
+              return data.user
+                ? `Registration successful! Welcome, ${email}.`
+                : 'Registration complete, but no user data returned.';
+            } else {
+              return 'To Register, please provide a valid email address and password. (i.e. login new -e="youremail@mail.com" -p="yourpassword"';
+            }
+          } else {
+            // LOGIN
+            if (email && password) {
+              const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+              });
+
+              if (error) {
+                throw new Error(error.message);
+              }
+
+              setSession(data.session);
+              return data.user
+                ? `Login successful! Welcome back, ${email}.`
+                : 'Login successful, but no user data returned.';
+            } else {
+              return 'To Login, please provide your email and password. (i.e., login -e="youremail@mail.com" -p="yourpassword")';
+            }
+          }
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            return `Error: ${error.message}`;
+          } else {
+            return 'An unknown error occurred';
+          }
         }
       },
     },
@@ -119,12 +204,13 @@ const getDate = (dateString: string | null = null) => {
     .replace(/,/g, '');
 };
 
-// Examples:
-// console.log(dateCommand()); // Default format, current date
-// console.log(dateCommand('+%Y-%m-%d %H:%M:%S')); // Custom format
-// console.log(dateCommand('+%a %b %d %H:%M:%S %Y')); // Another format example
-// console.log(dateCommand('+%Y-%m-%d', '2024-11-08')); // Specific date
-// console.log(dateCommand('+%Y-%m-%d %H:%M:%S', 'next Friday')); // Relative date
+function simulateAsync(delay: number) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve('Done');
+    }, delay);
+  });
+}
 
 export const HEADER = `
 ████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████  

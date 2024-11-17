@@ -3,6 +3,7 @@ import styled, { ThemeProvider } from 'styled-components';
 import './App.css';
 import { dark, Theme } from './utils/themes';
 import { createCommands, HEADER, parseInput } from './utils/commands';
+import { Session } from '@supabase/supabase-js';
 
 const Blanket = styled.div`
   height: 100%;
@@ -48,17 +49,8 @@ const CaretSpan = styled.span<{
   }
 `;
 
-// const HiddenInput = styled.input`
-//   /* width: 0px; */
-//   /* height: 2rem; */
-//   border: none;
-//   outline: none;
-//   /* color: transparent; */
-//   background-color: transparent;
-//   padding: 0px;
-//   margin: 0px;
-// `;
 const Input = styled.input`
+  width: 86%; // Make dynamic
   margin-left: 1ch;
   background-color: transparent;
   border: none;
@@ -71,8 +63,10 @@ const Input = styled.input`
 `;
 
 function App() {
-  const lineHead = 'guest@terminalD:~$';
+  const [session, setSession] = useState<Session | null>(null);
+  const [lineHead, setLineHead] = useState<string>('guest@terminalD:~$');
   const lineHeadLength = lineHead.length + 3;
+  const [loading, setLoading] = useState<boolean>(false);
   const [theme, setTheme] = useState<Theme>(dark);
   const [inputValue, setInputValue] = useState('');
   const [caretLeft, setCaretLeft] = useState(lineHeadLength);
@@ -81,18 +75,18 @@ function App() {
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const mainInput = useRef<HTMLInputElement | null>(null);
+  const promptRef = useRef<HTMLDivElement | null>(null);
   const getTheme = () => {
     return theme;
   };
 
-  const COMMANDS = createCommands(setTheme, getTheme /*handleLoading*/, setLineHistory);
+  const COMMANDS = createCommands(setTheme, getTheme, setLoading, setLineHistory, setSession);
 
   // set input value on change
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const curInputLen = event.target.value.length;
     const previousInputLen = inputValue.length;
-    // const endOfInput = curInputLen + lineHeadLength;
-    // const curCaretPos = caretLeft;
+
     if (curInputLen > previousInputLen) {
       setCaretLeft(caretLeft + 1);
     }
@@ -174,7 +168,7 @@ function App() {
   };
 
   // evaluate input and return response
-  const getResponse = (inputValue: string) => {
+  const getResponse = async (inputValue: string) => {
     const newLine = `${lineHead} ${inputValue}`;
     const { command, args, options } = parseInput(inputValue);
 
@@ -189,7 +183,9 @@ function App() {
           `Command "${command}" does not accept arguments.`,
         ]);
       } else {
-        const response = cmd.execute(args, options);
+        setLineHistory([...lineHistory, newLine]);
+        const response = await cmd.execute(args, options);
+        setLoading(false);
 
         if (response != '') {
           setLineHistory([...lineHistory, newLine, response]);
@@ -208,6 +204,27 @@ function App() {
     }
   }, [lineHistory]);
 
+  useEffect(() => {
+    if (promptRef.current) {
+      if (loading) {
+        promptRef.current.style.display = 'none';
+      } else {
+        promptRef.current.style.display = 'block';
+        setFocus();
+      }
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    if (session) {
+      setLineHead(`${session.user.email?.split('@')[0]}@terminalD:~$`);
+      setCaretLeft(`${session.user.email?.split('@')[0]}@terminalD:~$`.length + 3);
+    } else {
+      setLineHead('guest@terminalD:~$');
+      setCaretLeft('guest@terminalD:~$'.length + 3);
+    }
+  }, [session]);
+
   return (
     <ThemeProvider theme={theme}>
       <Blanket onClick={setFocus}>
@@ -223,7 +240,8 @@ function App() {
               </Line>
             ))}
           </Lines>
-          <Prompt>
+          {loading && 'Loading...'}
+          <Prompt ref={promptRef}>
             {lineHead}
             <CaretSpan $leftPosition={caretLeft} />
             <Input
@@ -234,7 +252,6 @@ function App() {
               onChange={(e) => handleInputChange(e)}
               onKeyDown={(e) => handleKeyPress(e)}
             ></Input>
-
             <div ref={bottomRef} />
           </Prompt>
         </Main>
