@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import styled, { ThemeProvider } from 'styled-components';
 import './App.css';
-import { dark, Theme } from './utils/themes';
+import { getPresetThemes, Theme } from './utils/themes';
 import { createCommands, HEADER, parseInput } from './utils/commands';
 import { Session } from '@supabase/supabase-js';
 
@@ -10,6 +10,10 @@ const Blanket = styled.div`
   width: 100%;
   background: ${({ theme }) => theme.bg};
   color: ${({ theme }) => theme.font};
+  ::selection {
+    background-color: ${({ theme }) => theme.primary};
+    color: ${({ theme }) => theme.bg};
+  }
 `;
 
 const Header = styled.pre`
@@ -22,7 +26,7 @@ const Lines = styled.div``;
 const Line = styled.div``;
 const Prompt = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: center;
 `;
 const CaretSpan = styled.span<{
   $leftPosition: number;
@@ -30,7 +34,6 @@ const CaretSpan = styled.span<{
   position: absolute;
   left: ${({ $leftPosition }) => `${$leftPosition}ch`};
   width: 1ch;
-  /* margin: 0.25rem 0px 0.25rem 0px; */
   height: 1em;
   background-color: ${({ theme }) => theme.font};
   animation: blink 1s steps(2, start) infinite;
@@ -67,7 +70,8 @@ function App() {
   const [lineHead, setLineHead] = useState<string>('guest@terminalD:~$');
   const lineHeadLength = lineHead.length + 3;
   const [loading, setLoading] = useState<boolean>(false);
-  const [theme, setTheme] = useState<Theme>(dark);
+  const [themes, setThemes] = useState<Record<string, Theme>>(getPresetThemes());
+  const [activeTheme, setActiveTheme] = useState<Theme>(themes['dark']);
   const [inputValue, setInputValue] = useState('');
   const [caretLeft, setCaretLeft] = useState(lineHeadLength);
   const [lineHistory, setLineHistory] = useState<Array<string>>([]);
@@ -76,11 +80,24 @@ function App() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const mainInput = useRef<HTMLInputElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
-  const getTheme = () => {
-    return theme;
+
+  const getActiveTheme = () => {
+    return activeTheme;
   };
 
-  const COMMANDS = createCommands(setTheme, getTheme, setLoading, setLineHistory, setSession);
+  const getThemes = () => {
+    return themes;
+  };
+
+  const COMMANDS = createCommands(
+    setActiveTheme,
+    getActiveTheme,
+    setThemes,
+    getThemes,
+    setLoading,
+    setLineHistory,
+    setSession
+  );
 
   // set input value on change
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,21 +191,14 @@ function App() {
 
     if (command && COMMANDS[command]) {
       const cmd = COMMANDS[command];
+      setLineHistory([...lineHistory, newLine]);
+      const response = await cmd.execute(args, options);
 
-      // Check if args are allowed and if any were provided when they shouldn’t be
-      if (!cmd.argsAllowed && args.length > 0) {
-        setLineHistory([
-          ...lineHistory,
-          newLine,
-          `Command "${command}" does not accept arguments.`,
-        ]);
-      } else {
-        setLineHistory([...lineHistory, newLine]);
-        const response = await cmd.execute(args, options);
-        setLoading(false);
-
-        if (response != '') {
-          setLineHistory([...lineHistory, newLine, response]);
+      if (response != '') {
+        if (typeof response == 'string') {
+          setLineHistory([...lineHistory, newLine, '<br>', response, '<br>']);
+        } else {
+          setLineHistory([...lineHistory, newLine, '<br>', ...response, '<br>']);
         }
       }
     } else {
@@ -209,7 +219,7 @@ function App() {
       if (loading) {
         promptRef.current.style.display = 'none';
       } else {
-        promptRef.current.style.display = 'block';
+        promptRef.current.style.display = 'flex';
         setFocus();
       }
     }
@@ -226,7 +236,7 @@ function App() {
   }, [session]);
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={activeTheme}>
       <Blanket onClick={setFocus}>
         <Main>
           <Lines>
@@ -236,7 +246,7 @@ function App() {
                 key={index}
                 data-key={index}
               >
-                {line}
+                {line === '<br>' ? <br /> : line}
               </Line>
             ))}
           </Lines>

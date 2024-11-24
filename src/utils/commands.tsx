@@ -1,12 +1,16 @@
 import { Dispatch, SetStateAction } from 'react';
-import { Theme, dark, retro } from './themes.tsx';
+import { Theme } from './themes.tsx';
 import supabase from './supabase.ts';
 import { Session } from '@supabase/supabase-js';
 
 type Command = {
-  description: string;
+  description: string | string[];
   argsAllowed: boolean;
-  execute: (args: string[], options: Record<string, string | boolean>) => string | Promise<string>;
+  optionsAllowed: boolean;
+  execute: (
+    args: string[],
+    options: Record<string, string | boolean>
+  ) => string | string[] | Promise<string>;
 };
 
 type ParsedInput = {
@@ -39,53 +43,38 @@ export const parseInput = (input: string): ParsedInput => {
 };
 
 export const createCommands = (
-  setTheme: Dispatch<SetStateAction<Theme>>,
-  getTheme: () => Theme,
+  setActiveTheme: Dispatch<SetStateAction<Theme>>,
+  getActiveTheme: () => Theme,
+  setThemes: Dispatch<SetStateAction<Record<string, Theme>>>,
+  getThemes: () => Record<string, Theme>,
   setLoading: Dispatch<SetStateAction<boolean>>,
   setLineHistory: Dispatch<SetStateAction<string[]>>,
   setSession: Dispatch<SetStateAction<Session | null>>
 ): Record<string, Command> => {
   return {
-    ['retro']: {
-      description: 'Set the theme to "retro" mode.',
-      argsAllowed: false,
-      execute: () => {
-        if (getTheme() !== retro) {
-          setTheme(retro);
-          return 'Theme set to "retro" mode.';
-        } else {
-          return 'Theme is already set to "retro" mode.';
-        }
-      },
-    },
-    ['dark']: {
-      description: 'Set the theme to "dark" mode.',
-      argsAllowed: false,
-      execute: () => {
-        if (getTheme() !== dark) {
-          setTheme(dark);
-          return 'Theme set to "dark" mode.';
-        } else {
-          return 'Theme is already set to "dark" mode.';
-        }
-      },
+    ['theme']: {
+      description: 'Change the theme to a preset scheme, or create your own.',
+      argsAllowed: true,
+      optionsAllowed: false,
+      execute: (args, options) =>
+        handleTheme(args, options, setThemes, setActiveTheme, getActiveTheme, getThemes),
     },
     ['clear']: {
       description:
         'Clear the terminal screen, removing all previous commands and output displayed.',
       argsAllowed: false,
+      optionsAllowed: false,
       execute: () => {
         setLineHistory([]);
         return '';
       },
     },
     ['date']: {
-      // TODO add an arg?
-      description: 'Returns the current date/time. Options: -d="dateString" to specify a date.',
-      argsAllowed: false,
-      execute: (args, options) => {
-        const dateString = options['-d'] as string | undefined;
-        console.log(args);
+      description: 'Returns the current date/time. Args: date "dateString" to specify a date.',
+      argsAllowed: true,
+      optionsAllowed: false,
+      execute: (args) => {
+        const dateString = args[0]?.toLowerCase();
         if (dateString) {
           return getDate(dateString);
         } else {
@@ -96,6 +85,7 @@ export const createCommands = (
     ['load']: {
       description: 'test',
       argsAllowed: false,
+      optionsAllowed: false,
       execute: async () => {
         setLoading(true);
 
@@ -115,63 +105,13 @@ export const createCommands = (
       },
     },
     ['login']: {
-      description:
-        "Login or Register a user account. Arguments: 'new' to register. Options: -email=[emailAddress] to provide email to login/register, -pass=[password] to provide password to login/register.",
+      description: [
+        'Login with your username and password, or use the "new" keyword to register a new account.',
+        'Example: `login new "yourEmailAddress" "yourPassWord"` to register.',
+      ],
       argsAllowed: true,
-      execute: async (args, options) => {
-        setLoading(true);
-        const isNew = args[0] == 'new';
-        const email = options['-email'] as string | undefined;
-        const password = options['-pass'] as string | undefined;
-
-        try {
-          if (isNew) {
-            if (email && password) {
-              // Register
-              const { data, error } = await supabase.auth.signUp({
-                email: email,
-                password: password,
-              });
-
-              if (error) {
-                throw new Error(error.message);
-              }
-
-              setSession(data.session);
-              return data.user
-                ? `Registration successful! Welcome, ${email}.`
-                : 'Registration complete, but no user data returned.';
-            } else {
-              return 'To Register, please provide a valid email address and password. (i.e. login new -e="youremail@mail.com" -p="yourpassword"';
-            }
-          } else {
-            // LOGIN
-            if (email && password) {
-              const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password,
-              });
-
-              if (error) {
-                throw new Error(error.message);
-              }
-
-              setSession(data.session);
-              return data.user
-                ? `Login successful! Welcome back, ${email}.`
-                : 'Login successful, but no user data returned.';
-            } else {
-              return 'To Login, please provide your email and password. (i.e., login -e="youremail@mail.com" -p="yourpassword")';
-            }
-          }
-        } catch (error: unknown) {
-          if (error instanceof Error) {
-            return `Error: ${error.message}`;
-          } else {
-            return 'An unknown error occurred';
-          }
-        }
-      },
+      optionsAllowed: false,
+      execute: async (args) => handleAuth(args, setLoading, setSession),
     },
   };
 };
@@ -220,3 +160,124 @@ export const HEADER = `
    ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████  
                                     A Terminal Themed Portfolio By Dewald Breed
 `;
+
+const handleAuth = async (
+  args: string[],
+  setLoading: Dispatch<SetStateAction<boolean>>,
+  setSession: Dispatch<SetStateAction<Session | null>>
+) => {
+  setLoading(true);
+  const isNew = args[0]?.toLowerCase() === 'new';
+
+  try {
+    if (isNew) {
+      // Register
+      const email = args[1];
+      const password = args[2];
+      if (email && password) {
+        const { data, error } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        setSession(data.session);
+        return data.user
+          ? `Registration successful! Welcome, ${email}.`
+          : 'Registration complete, but no user data returned.';
+      } else {
+        return 'To Register, please provide a valid email address and password. (i.e. login new "youremail@mail.com" "yourpassword"';
+      }
+    } else {
+      // LOGIN
+      const email = args[0];
+      const password = args[1];
+
+      if (email && password) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        setSession(data.session);
+        return data.user
+          ? `Login successful! Welcome back, ${email}.`
+          : 'Login successful, but no user data returned.';
+      } else {
+        return 'To Login, please provide your email and password. (i.e., login "youremail@mail.com" "yourpassword"';
+      }
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      return `Error: ${error.message}`;
+    } else {
+      return 'An unknown error occurred';
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleTheme = (
+  args: string[],
+  options: Record<string, string | boolean>,
+  setThemes: Dispatch<SetStateAction<Record<string, Theme>>>,
+  setActiveTheme: Dispatch<SetStateAction<Theme>>,
+  getActiveTheme: () => Theme,
+  getThemes: () => Record<string, Theme>
+) => {
+  const isNew = args[0]?.toLowerCase() === 'new';
+
+  if (isNew) {
+    // create new theme
+    const name: string = args[1]?.toLowerCase();
+    const bgColor = options['-bg'] as string | undefined;
+    const textColor = options['-text'] as string | undefined;
+
+    if (bgColor && textColor) {
+      const newTheme: Theme = {
+        bg: bgColor,
+        primary: textColor,
+        font: textColor,
+      };
+      setThemes((prev) => ({ ...prev, [name]: newTheme }));
+      setActiveTheme(newTheme);
+      return `New theme "${name}" has been successfully created.`;
+    } else {
+      return [
+        `Please provide a valid colors string (i.e. blue, black, azure ect.).`,
+        `Example: theme new "themeName" -bg="backgroundColorName" -text="textColorName"`,
+      ];
+    }
+  } else {
+    // select preset
+    const activeTheme = getActiveTheme();
+    const allThemes = getThemes();
+    const themeArg = args[0]?.toLowerCase();
+
+    if (!themeArg || themeArg.trim() === '')
+      return [
+        'Please provide a valid theme name, or use the "new" keyword to create a new theme.',
+        'Example: theme new -bg="backgroundColor" -text="fontColor"',
+      ];
+
+    const validTheme = allThemes[themeArg];
+    if (validTheme && validTheme !== activeTheme) {
+      setActiveTheme(validTheme);
+      return `Theme set to ${themeArg}.`;
+    } else {
+      if (validTheme) {
+        return `Theme is already set to ${themeArg}.`;
+      } else {
+        return `Theme ${themeArg} does not exist.`;
+      }
+    }
+  }
+};
