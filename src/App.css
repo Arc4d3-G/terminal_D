@@ -1,1 +1,28 @@
+@font-face {
+  font-family: 'UbuntuMono';
+  src: local('UbuntuMono-Bold'), url('./assets/fonts/UbuntuMono-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
 
+@font-face {
+  font-family: 'UbuntuMono';
+  src: local('UbuntuMono-BoldItalic'),
+    url('./assets/fonts/UbuntuMono-BoldItalic.ttf') format('truetype');
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'UbuntuMono';
+  src: local('UbuntuMono-Italic'), url('./assets/fonts/UbuntuMono-Italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'UbuntuMono';
+  src: local('UbuntuMono-Regular'), url('./assets/fonts/UbuntuMono-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
