@@ -6,6 +6,7 @@ import { createCommands, HEADER, parseInput } from './utils/commands';
 import { Session } from '@supabase/supabase-js';
 
 const Blanket = styled.div`
+  min-height: 100vh;
   height: 100%;
   width: 100%;
   background: ${({ theme }) => theme.bg};
@@ -20,7 +21,7 @@ const Header = styled.pre`
   font-family: 'UbuntuMono';
 `;
 const Main = styled.div`
-  padding: 10px 10px 10px 20px;
+  padding: 1ch;
 `;
 const Lines = styled.div``;
 const Line = styled.div``;
@@ -28,11 +29,10 @@ const Prompt = styled.div`
   display: flex;
   align-items: center;
 `;
-const CaretSpan = styled.span<{
-  $leftPosition: number;
-}>`
+
+const CaretSpan = styled.span<{ $leftposition: number }>`
   position: absolute;
-  left: ${({ $leftPosition }) => `${$leftPosition}ch`};
+  left: ${({ $leftposition }) => `${$leftposition}ch`};
   width: 1ch;
   height: 1em;
   background-color: ${({ theme }) => theme.font};
@@ -53,7 +53,8 @@ const CaretSpan = styled.span<{
 `;
 
 const Input = styled.input`
-  width: 86%; // Make dynamic
+  width: -webkit-fill-available;
+  height: -webkit-fill-available;
   margin-left: 1ch;
   background-color: transparent;
   border: none;
@@ -66,9 +67,10 @@ const Input = styled.input`
 `;
 
 function App() {
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [session, setSession] = useState<Session | null>(null);
   const [lineHead, setLineHead] = useState<string>('guest@terminalD:~$');
-  const lineHeadLength = lineHead.length + 3;
+  const lineHeadLength = lineHead.length + 2;
   const [loading, setLoading] = useState<boolean>(false);
   const [themes, setThemes] = useState<Record<string, Theme>>(getPresetThemes());
   const [activeTheme, setActiveTheme] = useState<Theme>(themes['dark']);
@@ -231,14 +233,38 @@ function App() {
       setCaretLeft(`${session.user.email?.split('@')[0]}@terminalD:~$`.length + 3);
     } else {
       setLineHead('guest@terminalD:~$');
-      setCaretLeft('guest@terminalD:~$'.length + 3);
+      setCaretLeft('guest@terminalD:~$'.length + 2);
     }
+    console.log('session');
   }, [session]);
+
+  useEffect(() => {
+    const loadFonts = async () => {
+      try {
+        const customFont = new FontFace(
+          'UbuntuMono',
+          "url(./assets/fonts/UbuntuMono-Regular.ttf) format('truetype')"
+        );
+        await customFont.load();
+        document.fonts.add(customFont);
+        setIsReady(true);
+      } catch (error) {
+        console.error('Failed to load fonts', error);
+        setIsReady(true); // Proceed even if fonts fail
+      }
+    };
+
+    loadFonts();
+  }, []);
+
+  if (!isReady) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <ThemeProvider theme={activeTheme}>
       <Blanket onClick={setFocus}>
-        <Main>
+        <Main style={{ fontFamily: 'UbuntuMono' }}>
           <Lines>
             <Header>{HEADER}</Header>
             {lineHistory.map((line, index) => (
@@ -253,7 +279,7 @@ function App() {
           {loading && 'Loading...'}
           <Prompt ref={promptRef}>
             {lineHead}
-            <CaretSpan $leftPosition={caretLeft} />
+            <CaretSpan $leftposition={caretLeft} />
             <Input
               ref={mainInput}
               autoFocus
