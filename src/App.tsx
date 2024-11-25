@@ -4,6 +4,7 @@ import './App.css';
 import { getPresetThemes, Theme } from './utils/themes';
 import { createCommands, HEADER, parseInput } from './utils/commands';
 import { Session } from '@supabase/supabase-js';
+import FontFaceObserver from 'fontfaceobserver';
 
 const Blanket = styled.div`
   min-height: 100vh;
@@ -238,23 +239,13 @@ function App() {
     console.log('session');
   }, [session]);
 
+  // loading resources
   useEffect(() => {
-    const loadFonts = async () => {
-      try {
-        const customFont = new FontFace(
-          'UbuntuMono',
-          "url(./assets/fonts/UbuntuMono-Regular.ttf) format('truetype')"
-        );
-        await customFont.load();
-        document.fonts.add(customFont);
-        setIsReady(true);
-      } catch (error) {
-        console.error('Failed to load fonts', error);
-        setIsReady(true); // Proceed even if fonts fail
-      }
-    };
-
-    loadFonts();
+    const font = new FontFaceObserver('UbuntoMono');
+    font
+      .load()
+      .then(() => setIsReady(true))
+      .catch(() => setIsReady(true)); // Handle failure gracefully
   }, []);
 
   if (!isReady) {
