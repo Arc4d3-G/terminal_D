@@ -241,7 +241,7 @@ function App() {
 
   // loading resources
   useEffect(() => {
-    const font = new FontFaceObserver('UbuntoMono');
+    const font = new FontFaceObserver('UbuntuMono');
     font
       .load()
       .then(() => setIsReady(true))
