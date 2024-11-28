@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import styled, { ThemeProvider } from 'styled-components';
 import './App.css';
 import { getPresetThemes, Theme } from './utils/themes';
-import { createCommands, HEADER, parseInput } from './utils/commands';
+import { createCommands, parseInput } from './utils/commands';
 import { Session } from '@supabase/supabase-js';
 import FontFaceObserver from 'fontfaceobserver';
 
@@ -17,11 +17,18 @@ const Blanket = styled.div`
     color: ${({ theme }) => theme.bg};
   }
 `;
+const LoadingScreen = styled.div`
+  min-height: 100vh;
+  height: 100%;
+  width: 100%;
+  background: ${({ theme }) => theme.bg};
+`;
 
 const Header = styled.pre`
   font-family: 'UbuntuMono';
 `;
 const Main = styled.div`
+  cursor: default;
   padding: 1ch;
 `;
 const Lines = styled.div``;
@@ -65,9 +72,19 @@ const Input = styled.input`
   font-family: inherit;
   padding: 0px;
   caret-color: transparent;
+  cursor: default;
 `;
 
 function App() {
+  const introText = './initTerminalD.sh';
+  const HEADER = `
+████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████
+   ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██           ██   ██
+   ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██    █████  ██   ██
+   ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██           ██   ██
+   ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████
+                                    A Terminal Themed Portfolio By Dewald Breed
+`;
   const [isReady, setIsReady] = useState<boolean>(false);
   const [session, setSession] = useState<Session | null>(null);
   const [lineHead, setLineHead] = useState<string>('guest@terminalD:~$');
@@ -80,6 +97,8 @@ function App() {
   const [lineHistory, setLineHistory] = useState<Array<string>>([]);
   const [commandHistory, setCommandHistory] = useState<Array<string>>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
+  const [isTyping, setIsTyping] = useState<boolean>(true);
+  const [inputDisabled, setInputDisabled] = useState<boolean>(true);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const mainInput = useRef<HTMLInputElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
@@ -92,6 +111,10 @@ function App() {
     return themes;
   };
 
+  const getSession = () => {
+    return session;
+  };
+
   const COMMANDS = createCommands(
     setActiveTheme,
     getActiveTheme,
@@ -99,7 +122,9 @@ function App() {
     getThemes,
     setLoading,
     setLineHistory,
-    setSession
+    setSession,
+    getSession,
+    introText
   );
 
   // set input value on change
@@ -117,6 +142,9 @@ function App() {
   // handle key presses
   const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
+      if (isTyping) {
+        setIsTyping(false);
+      }
       if (inputValue.trim() != '') {
         if (!commandHistory.includes(inputValue)) {
           setCommandHistory([inputValue, ...commandHistory]);
@@ -192,21 +220,35 @@ function App() {
     const newLine = `${lineHead} ${inputValue}`;
     const { command, args, options } = parseInput(inputValue);
 
-    if (command && COMMANDS[command]) {
-      const cmd = COMMANDS[command];
-      setLineHistory([...lineHistory, newLine]);
-      const response = await cmd.execute(args, options);
+    if (command) {
+      if (command === 'help') {
+        const response: string[] = [];
+        Object.entries(COMMANDS).forEach(([key, value]) => {
+          if (value['isListed'] === false) return;
 
-      if (response != '') {
-        if (typeof response == 'string') {
-          setLineHistory([...lineHistory, newLine, '<br>', response, '<br>']);
-        } else {
-          setLineHistory([...lineHistory, newLine, '<br>', ...response, '<br>']);
+          response.push(key.toUpperCase());
+          response.push(...value.description);
+          response.push('<br>');
+        });
+
+        setLineHistory([...lineHistory, newLine, '<br>', ...response, '<br>']);
+        console.log(response);
+      } else if (COMMANDS[command]) {
+        const cmd = COMMANDS[command];
+        setLineHistory([...lineHistory, newLine]);
+        const response = await cmd.execute(args, options);
+
+        if (response != '') {
+          if (typeof response == 'string') {
+            setLineHistory([...lineHistory, newLine, '<br>', response, '<br>']);
+          } else {
+            setLineHistory([...lineHistory, newLine, '<br>', ...response, '<br>']);
+          }
         }
+      } else {
+        const emptyResponse = inputValue.trim() === '' ? '' : `Unsupported Command: ${inputValue}`;
+        setLineHistory([...lineHistory, newLine, emptyResponse]);
       }
-    } else {
-      const emptyResponse = inputValue.trim() === '' ? '' : `Unsupported Command: ${inputValue}`;
-      setLineHistory([...lineHistory, newLine, emptyResponse]);
     }
   };
 
@@ -236,20 +278,49 @@ function App() {
       setLineHead('guest@terminalD:~$');
       setCaretLeft('guest@terminalD:~$'.length + 2);
     }
-    console.log('session');
   }, [session]);
+
+  useEffect(() => {
+    if (!isTyping) return;
+    if (isTyping && inputValue === introText) {
+      getResponse(introText).then(() => {
+        setCaretLeft(lineHeadLength);
+        setIsTyping(false);
+        setInputDisabled(false);
+        setInputValue('');
+      });
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setInputValue((prev) => introText.slice(0, prev.length + 1));
+      setCaretLeft(caretLeft + 1);
+    }, 100);
+
+    return () => clearTimeout(timeout); // Cleanup on unmount or re-render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputValue, isTyping, caretLeft, lineHeadLength, lineHead, session]);
 
   // loading resources
   useEffect(() => {
     const font = new FontFaceObserver('UbuntuMono');
     font
       .load()
-      .then(() => setIsReady(true))
-      .catch(() => setIsReady(true)); // Handle failure gracefully
+      .then(
+        () =>
+          // setTimeout(() => {
+          setIsReady(true)
+        // }, 5000)
+      )
+      .catch(() => setIsReady(true));
   }, []);
 
   if (!isReady) {
-    return <div>Loading...</div>;
+    return (
+      <ThemeProvider theme={activeTheme}>
+        <LoadingScreen />
+      </ThemeProvider>
+    );
   }
 
   return (
@@ -263,21 +334,29 @@ function App() {
                 key={index}
                 data-key={index}
               >
-                {line === '<br>' ? <br /> : line}
+                {line === '<br>' ? <br /> : line.includes('&nbsp;') ? `\t${line}` : line}
               </Line>
             ))}
           </Lines>
-          {loading && 'Loading...'}
+          {loading && (
+            <span>
+              <br />
+              Loading...
+              <br />
+            </span>
+          )}
           <Prompt ref={promptRef}>
             {lineHead}
             <CaretSpan $leftposition={caretLeft} />
             <Input
+              spellCheck={false}
               ref={mainInput}
               autoFocus
               type='text'
               value={inputValue}
               onChange={(e) => handleInputChange(e)}
               onKeyDown={(e) => handleKeyPress(e)}
+              readOnly={inputDisabled}
             ></Input>
             <div ref={bottomRef} />
           </Prompt>

@@ -4,9 +4,10 @@ import supabase from './supabase.ts';
 import { Session } from '@supabase/supabase-js';
 
 type Command = {
-  description: string | string[];
+  description: string[];
   argsAllowed: boolean;
   optionsAllowed: boolean;
+  isListed: boolean;
   execute: (
     args: string[],
     options: Record<string, string | boolean>
@@ -49,58 +50,76 @@ export const createCommands = (
   getThemes: () => Record<string, Theme>,
   setLoading: Dispatch<SetStateAction<boolean>>,
   setLineHistory: Dispatch<SetStateAction<string[]>>,
-  setSession: Dispatch<SetStateAction<Session | null>>
+  setSession: Dispatch<SetStateAction<Session | null>>,
+  getSession: () => Session | null,
+  introText: string
 ): Record<string, Command> => {
   return {
-    ['theme']: {
-      description: 'Change the theme to a preset scheme, or create your own.',
-      argsAllowed: true,
-      optionsAllowed: false,
-      execute: (args, options) =>
-        handleTheme(args, options, setThemes, setActiveTheme, getActiveTheme, getThemes),
-    },
-    ['clear']: {
-      description:
-        'Clear the terminal screen, removing all previous commands and output displayed.',
+    [introText]: {
+      description: [''],
       argsAllowed: false,
       optionsAllowed: false,
-      execute: () => {
-        setLineHistory([]);
-        return '';
-      },
-    },
-    ['date']: {
-      description: 'Returns the current date/time. Args: date "dateString" to specify a date.',
-      argsAllowed: true,
-      optionsAllowed: false,
-      execute: (args) => {
-        const dateString = args[0]?.toLowerCase();
-        if (dateString) {
-          return getDate(dateString);
-        } else {
-          return getDate();
-        }
-      },
-    },
-    ['load']: {
-      description: 'test',
-      argsAllowed: false,
-      optionsAllowed: false,
+      isListed: false,
       execute: async () => {
         setLoading(true);
-
+        const session = getSession();
         try {
           const result = await simulateAsync(5000); // Wait for the promise to resolve
           setLoading(false); // Turn off loading after promise resolution
 
           if (result === 'Done') {
-            return 'done loading';
+            return `Welcome ${
+              session ? session.user.email : 'guest'
+            }! To get started, try the "about" command for a brief overview of this project, or "help" for a list of all available commands.`;
           } else {
             return 'Something went wrong';
           }
         } catch (error) {
           setLoading(false); // Ensure loading state is reset even if an error occurs
           return `Error: ${error}`;
+        }
+      },
+    },
+    ['about']: {
+      description: [''],
+      argsAllowed: false,
+      optionsAllowed: false,
+      isListed: false,
+      execute: () => {
+        return 'test';
+      },
+    },
+    ['theme']: {
+      description: ['Change the theme to a preset scheme, or create your own.'],
+      argsAllowed: true,
+      optionsAllowed: false,
+      isListed: true,
+      execute: (args, options) =>
+        handleTheme(args, options, setThemes, setActiveTheme, getActiveTheme, getThemes),
+    },
+    ['clear']: {
+      description: [
+        'Clear the terminal screen, removing all previous commands and output displayed.',
+      ],
+      argsAllowed: false,
+      optionsAllowed: false,
+      isListed: true,
+      execute: () => {
+        setLineHistory([]);
+        return '';
+      },
+    },
+    ['date']: {
+      description: ['Returns the current date/time. Args: date "dateString" to specify a date.'],
+      argsAllowed: true,
+      optionsAllowed: false,
+      isListed: true,
+      execute: (args) => {
+        const dateString = args[0]?.toLowerCase();
+        if (dateString) {
+          return getDate(dateString);
+        } else {
+          return getDate();
         }
       },
     },
@@ -111,6 +130,7 @@ export const createCommands = (
       ],
       argsAllowed: true,
       optionsAllowed: false,
+      isListed: true,
       execute: async (args) => handleAuth(args, setLoading, setSession),
     },
   };
@@ -151,15 +171,6 @@ function simulateAsync(delay: number) {
     }, delay);
   });
 }
-
-export const HEADER = `
-████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████
-   ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██           ██   ██
-   ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██    █████  ██   ██
-   ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██           ██   ██
-   ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████
-                                    A Terminal Themed Portfolio By Dewald Breed
-`;
 
 const handleAuth = async (
   args: string[],
