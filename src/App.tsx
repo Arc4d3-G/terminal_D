@@ -333,8 +333,15 @@ function App() {
               <Line
                 key={index}
                 data-key={index}
+                style={line.includes('<ascii>') ? { fontSize: '0.2em' } : { fontSize: '1.4' }}
               >
-                {line === '<br>' ? <br /> : line.includes('&nbsp;') ? `\t${line}` : line}
+                {line === '<br>' ? (
+                  <br />
+                ) : line.includes('<ascii>') ? (
+                  line.replace('<ascii>', '')
+                ) : (
+                  line
+                )}
               </Line>
             ))}
           </Lines>

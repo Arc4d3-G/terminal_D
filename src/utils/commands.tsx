@@ -20,6 +20,11 @@ type ParsedInput = {
   options: Record<string, string | boolean>;
 };
 
+// interface ApiResponse {
+//   data: string | null;
+//   error: string | null;
+// }
+
 export const parseInput = (input: string): ParsedInput => {
   // Split by spaces, respecting quoted substrings
   const inputArr = (input.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map((part) => {
@@ -64,7 +69,7 @@ export const createCommands = (
         setLoading(true);
         const session = getSession();
         try {
-          const result = await simulateAsync(5000); // Wait for the promise to resolve
+          const result = await simulateAsync(2000); // Wait for the promise to resolve
           setLoading(false); // Turn off loading after promise resolution
 
           if (result === 'Done') {
@@ -133,6 +138,26 @@ export const createCommands = (
       isListed: true,
       execute: async (args) => handleAuth(args, setLoading, setSession),
     },
+    // ['dog']: {
+    //   description: [''],
+    //   argsAllowed: false,
+    //   optionsAllowed: false,
+    //   isListed: true,
+    //   execute: async () => {
+    //     setLoading(true);
+
+    //     const { data, error } = await getRequest('https://random.dog/woof.json');
+    //     if (error) {
+    //       setLoading(false);
+    //       return error.message;
+    //     }
+    //     const { fileSizeBytes, url } = data;
+    //     console.log(data);
+    //     const ascii = await imageUrlToAscii(url, 150);
+    //     setLoading(false);
+    //     return ascii;
+    //   },
+    // },
   };
 };
 
@@ -292,3 +317,84 @@ const handleTheme = (
     }
   }
 };
+
+// const getRequest = async (url: string): Promise<ApiResponse> => {
+//   try {
+//     const response = await fetch(url);
+
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! status: ${response.status}`);
+//     }
+
+//     const data = await response.json();
+//     return { data, error: null };
+//   } catch (error: any) {
+//     return { data: null, error: error.message || 'Something went wrong' };
+//   }
+// };
+
+/**
+ * Converts an image from a URL to ASCII art.
+ * @param imageUrl - The URL of the image.
+ * @param canvasWidth - The desired width of the ASCII art in characters.
+ * @returns A promise that resolves to an array of strings, where each string is a line of ASCII art.
+ */
+// async function imageUrlToAscii(imageUrl: string, canvasWidth: number): Promise<string[]> {
+//   const asciiChars = '@%#*+=-:. '; // Characters for intensity mapping, from darkest to lightest.
+
+//   return new Promise((resolve, reject) => {
+//     const img = new Image();
+//     img.crossOrigin = 'Anonymous'; // Enable CORS to fetch images from other domains.
+//     img.src = imageUrl;
+
+//     img.onload = () => {
+//       // Calculate canvas height maintaining aspect ratio.
+//       const aspectRatio = img.height / img.width;
+//       const canvasHeight = Math.round(canvasWidth * aspectRatio);
+
+//       // Create a canvas to process the image.
+//       const canvas = document.createElement('canvas');
+//       canvas.width = canvasWidth;
+//       canvas.height = canvasHeight;
+
+//       const ctx = canvas.getContext('2d');
+//       if (!ctx) {
+//         reject(new Error('Failed to get 2D context.'));
+//         return;
+//       }
+
+//       // Draw the image on the canvas.
+//       ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+
+//       // Get image data.
+//       const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+//       const { data, width, height } = imageData;
+
+//       const asciiArt: string[] = [];
+
+//       // Convert pixels to ASCII characters.
+//       for (let y = 0; y < height; y++) {
+//         let line = '';
+//         for (let x = 0; x < width; x++) {
+//           const offset = (y * width + x) * 4;
+//           const r = data[offset];
+//           const g = data[offset + 1];
+//           const b = data[offset + 2];
+
+//           // Calculate grayscale value.
+//           const grayscale = Math.round((r + g + b) / 3);
+
+//           // Map grayscale to ASCII character.
+//           const charIndex = Math.floor((grayscale / 255) * (asciiChars.length - 1));
+//           line += asciiChars[charIndex];
+//         }
+//         line += '<ascii>';
+//         asciiArt.push(line); // Add the line to the array.
+//       }
+
+//       resolve(asciiArt);
+//     };
+
+//     img.onerror = (err) => reject(err);
+//   });
+// }
