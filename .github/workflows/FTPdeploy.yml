@@ -36,8 +36,7 @@ jobs:
        CI: false
 
     - name: Build
-      run: |
-        npm install
+      run: npm run build
         
     - name: FTP Deploy
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -45,5 +44,5 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: /public_html/
+          local-dir: ./dist
+          server-dir: /public_html
