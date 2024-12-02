@@ -1,4 +1,4 @@
-name: NodeJS with Grunt
+name: Deploy NodeJS
 
 on:
   push:
@@ -16,7 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
+      with:
+        fetch-depth: 2
+        
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
