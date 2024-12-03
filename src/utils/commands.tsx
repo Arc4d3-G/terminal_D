@@ -11,7 +11,7 @@ type Command = {
   execute: (
     args: string[],
     options: Record<string, string | boolean>
-  ) => string | string[] | Promise<string>;
+  ) => string | string[] | Promise<string | string[]>;
 };
 
 type ParsedInput = {
@@ -19,6 +19,15 @@ type ParsedInput = {
   args: string[];
   options: Record<string, string | boolean>;
 };
+
+export const HEADER = `
+████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████
+   ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██           ██   ██
+   ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██    █████  ██   ██
+   ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██           ██   ██
+   ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████
+                                    A Terminal Themed Portfolio By Dewald Breed
+  `;
 
 // interface ApiResponse {
 //   data: string | null;
@@ -56,42 +65,30 @@ export const createCommands = (
   setLoading: Dispatch<SetStateAction<boolean>>,
   setLineHistory: Dispatch<SetStateAction<string[]>>,
   setSession: Dispatch<SetStateAction<Session | null>>,
-  getSession: () => Session | null,
-  introText: string
+  setLineHead: Dispatch<React.SetStateAction<string>>,
+  setCaretLeft: Dispatch<React.SetStateAction<number>>
 ): Record<string, Command> => {
   return {
-    [introText.toLocaleLowerCase()]: {
-      description: [''],
-      argsAllowed: false,
-      optionsAllowed: false,
-      isListed: false,
-      execute: async () => {
-        setLoading(true);
-        const session = getSession();
-        try {
-          const result = await simulateAsync(2000); // Wait for the promise to resolve
-          setLoading(false); // Turn off loading after promise resolution
-
-          if (result === 'Done') {
-            return `Welcome ${
-              session ? session.user.email : 'guest'
-            }! To get started, try the "about" command for a brief overview of this project, or "help" for a list of all available commands.`;
-          } else {
-            return 'Something went wrong';
-          }
-        } catch (error) {
-          setLoading(false); // Ensure loading state is reset even if an error occurs
-          return `Error: ${error}`;
-        }
-      },
-    },
     ['about']: {
       description: [''],
       argsAllowed: false,
       optionsAllowed: false,
       isListed: false,
       execute: () => {
-        return 'test';
+        // return `
+        //   Terminal-D was born out of a desire to create a portfolio that went beyond the typical developer website.
+        //   As a junior developer, I wanted a platform to showcase not just my skills, but also my personal projects and ideas in a more interactive and engaging way.
+        //   Instead of a static site or just linking to my GitHub, I envisioned a dynamic environment—a sandbox where I could demonstrate a variety of projects and technologies.
+        //   The terminal, known for its versatility and broad functionality, felt like the perfect medium.
+        //   With Terminal-D, I can integrate and present my work as commands, offering a unique, hands-on experience for users to explore what I’ve built.
+        // `;
+        return `
+          Terminal-D started as a simple idea: As a junior developer I wanted a portfolio to show off my work, but I also wanted it to be fun, interactive, and way more than just a “here’s my GitHub” link. 
+          I’ve got a lot of various interests and ideas, so I needed something flexible—a sandbox to bring everything together. 
+          That’s when I thought, “Why not a terminal?” It’s versatile and perfect for showcasing all kinds of functionality. 
+          Plus, it’s been a great way for me to practice and experiment with different programming technologies and concepts. 
+          With Terminal-D, I can turn my projects into commands and let people explore them while I keep learning and building.
+        `;
       },
     },
     ['theme']: {
@@ -110,7 +107,12 @@ export const createCommands = (
       optionsAllowed: false,
       isListed: true,
       execute: () => {
-        setLineHistory([]);
+        setLineHistory([
+          HEADER,
+          'Welcome to Terminal-D!',
+          'Type `help` to get started or `about` to learn more about Terminal-D. ',
+          '<br>',
+        ]);
         return '';
       },
     },
@@ -136,7 +138,7 @@ export const createCommands = (
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
-      execute: async (args) => handleAuth(args, setLoading, setSession),
+      execute: async (args) => handleAuth(args, setLoading, setSession, setCaretLeft, setLineHead),
     },
     // ['dog']: {
     //   description: [''],
@@ -189,7 +191,7 @@ const getDate = (dateString: string | null = null) => {
     .replace(/,/g, '');
 };
 
-function simulateAsync(delay: number) {
+export function simulateAsync(delay: number) {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve('Done');
@@ -200,7 +202,9 @@ function simulateAsync(delay: number) {
 const handleAuth = async (
   args: string[],
   setLoading: Dispatch<SetStateAction<boolean>>,
-  setSession: Dispatch<SetStateAction<Session | null>>
+  setSession: Dispatch<SetStateAction<Session | null>>,
+  setCaretLeft: Dispatch<React.SetStateAction<number>>,
+  setLineHead: Dispatch<React.SetStateAction<string>>
 ) => {
   setLoading(true);
   const isNew = args[0]?.toLowerCase() === 'new';
@@ -243,8 +247,12 @@ const handleAuth = async (
         }
 
         setSession(data.session);
+        const mailName = email.split('@')[0];
+        setLineHead(`${mailName}@terminalD:~$`);
+        setCaretLeft(`${mailName}@terminalD:~$`.length + 2);
+
         return data.user
-          ? `Login successful! Welcome back, ${email}.`
+          ? `Login successful! Welcome back, ${mailName}.`
           : 'Login successful, but no user data returned.';
       } else {
         return 'To Login, please provide your email and password. (i.e., login "youremail@mail.com" "yourpassword"';
@@ -294,9 +302,12 @@ const handleTheme = (
     }
   } else {
     // select preset
+
     const activeTheme = getActiveTheme();
     const allThemes = getThemes();
     const themeArg = args[0]?.toLowerCase();
+
+    if (options['-l']) return Object.keys(allThemes).map((key) => key);
 
     if (!themeArg || themeArg.trim() === '')
       return [

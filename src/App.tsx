@@ -2,14 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
 import './App.css';
 import { getPresetThemes, Theme } from './utils/themes';
-import { createCommands, parseInput } from './utils/commands';
+import { createCommands, HEADER, parseInput, simulateAsync } from './utils/commands';
 import { Session } from '@supabase/supabase-js';
 import FontFaceObserver from 'fontfaceobserver';
 
 const GlobalStyle = createGlobalStyle`
   html, body {
-    margin: 0;
-    padding: 0;
     line-height: 1.2;
     font-size: clamp(0.8em, 1vw, 1em);
     font-weight: 400;
@@ -26,7 +24,7 @@ const GlobalStyle = createGlobalStyle`
   }
 
   pre {
-  margin: 0px 0px 1rem 0px;
+  margin: 0px 0px 0px 0px;
   }
 `;
 
@@ -102,17 +100,11 @@ const Input = styled.input`
 
 function App() {
   const introText = './initTerminalD.sh';
-  const HEADER = `
-████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████
-   ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██           ██   ██
-   ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██    █████  ██   ██
-   ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██           ██   ██
-   ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████
-                                    A Terminal Themed Portfolio By Dewald Breed
-  `;
+  const introLineHead = 'guest@localMachine:~$';
+  const defaultLineHead = 'guest@terminalD:~$';
   const [isReady, setIsReady] = useState<boolean>(false);
   const [session, setSession] = useState<Session | null>(null);
-  const [lineHead, setLineHead] = useState<string>('guest@terminalD:~$');
+  const [lineHead, setLineHead] = useState<string>(introLineHead);
   const lineHeadLength = lineHead.length + 2;
   const [loading, setLoading] = useState<boolean>(false);
   const [themes, setThemes] = useState<Record<string, Theme>>(getPresetThemes());
@@ -136,9 +128,9 @@ function App() {
     return themes;
   };
 
-  const getSession = () => {
-    return session;
-  };
+  // const getSession = () => {
+  //   return session;
+  // };
 
   const COMMANDS = createCommands(
     setActiveTheme,
@@ -148,8 +140,8 @@ function App() {
     setLoading,
     setLineHistory,
     setSession,
-    getSession,
-    introText
+    setLineHead,
+    setCaretLeft
   );
 
   // set input value on change
@@ -300,25 +292,48 @@ function App() {
     }
   }, [loading]);
 
-  useEffect(() => {
-    if (session) {
-      setLineHead(`${session.user.email?.split('@')[0]}@terminalD:~$`);
-      setCaretLeft(`${session.user.email?.split('@')[0]}@terminalD:~$`.length + 3);
-    } else {
-      setLineHead('guest@terminalD:~$');
-      setCaretLeft('guest@terminalD:~$'.length + 2);
-    }
-  }, [session]);
+  // useEffect(() => {
+  //   if (session) {
+  //     setLineHead(`${session.user.email?.split('@')[0]}@terminalD:~$`);
+  //     setCaretLeft(`${session.user.email?.split('@')[0]}@terminalD:~$`.length + 3);
+  //   } else {
+  //     setLineHead(defaultLineHead);
+  //     setCaretLeft(defaultLineHead.length + 2);
+  //   }
+  // }, [session]);
 
   useEffect(() => {
-    if (!isTyping) return;
+    if (!isTyping || !isReady) return;
     if (isTyping && inputValue === introText) {
-      getResponse(introText).then(() => {
-        setCaretLeft(lineHeadLength);
+      setLoading(true);
+      const introSequence = async () => {
+        const messages = [
+          `${lineHead} ${introText}`,
+          '[INFO] Initializing Terminal-D...',
+          '[INFO] Loading environment variables...',
+          '[INFO] Setting up system paths...',
+          '[INFO] Terminal-D initialized successfully.',
+        ];
+        for (const message of messages) {
+          setLineHistory((prevHistory) => [...prevHistory, message]);
+          await simulateAsync(500);
+        }
+
+        setLineHistory((prevHistory) => [
+          ...prevHistory,
+          HEADER,
+          'Welcome to Terminal-D!',
+          'Type `help` to get started or `about` to learn more about Terminal-D. ',
+          '<br>',
+        ]);
+        setLineHead(defaultLineHead);
+        setCaretLeft(defaultLineHead.length + 2);
         setIsTyping(false);
         setInputDisabled(false);
         setInputValue('');
-      });
+        setLoading(false);
+      };
+      introSequence();
       return;
     }
 
@@ -328,8 +343,7 @@ function App() {
     }, 100);
 
     return () => clearTimeout(timeout); // Cleanup on unmount or re-render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputValue, isTyping, caretLeft, lineHeadLength, lineHead, session]);
+  }, [inputValue, isTyping, caretLeft, lineHeadLength, lineHead, session, isReady]);
 
   // loading resources
   useEffect(() => {
@@ -348,6 +362,7 @@ function App() {
   if (!isReady) {
     return (
       <ThemeProvider theme={activeTheme}>
+        <GlobalStyle />
         <LoadingScreen />
       </ThemeProvider>
     );
@@ -359,7 +374,7 @@ function App() {
       <Blanket onClick={setFocus}>
         <Main style={{ fontFamily: 'UbuntuMono' }}>
           <Lines>
-            <Header>{HEADER}</Header>
+            {/* {!isTyping && <Header>{HEADER}</Header>} */}
             {lineHistory.map((line, index) => (
               <Line
                 key={index}
@@ -370,19 +385,21 @@ function App() {
                   <br />
                 ) : line.includes('<ascii>') ? (
                   line.replace('<ascii>', '')
+                ) : line === HEADER ? (
+                  <Header>{HEADER}</Header>
                 ) : (
                   line
                 )}
               </Line>
             ))}
           </Lines>
-          {loading && (
+          {/* {loading && (
             <span>
               <br />
               Loading...
               <br />
             </span>
-          )}
+          )} */}
           <Prompt ref={promptRef}>
             {lineHead}
             <CaretSpan $leftposition={caretLeft} />
