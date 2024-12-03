@@ -1,10 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
-import styled, { ThemeProvider } from 'styled-components';
+import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
 import './App.css';
 import { getPresetThemes, Theme } from './utils/themes';
 import { createCommands, parseInput } from './utils/commands';
 import { Session } from '@supabase/supabase-js';
 import FontFaceObserver from 'fontfaceobserver';
+
+const GlobalStyle = createGlobalStyle`
+  html, body {
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+    font-size: clamp(0.8em, 1vw, 1em);
+    font-weight: 400;
+    margin: 0px;
+    padding: 0px;
+  }
+  
+  #root {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  pre {
+  margin: 0px 0px 1rem 0px;
+  }
+`;
 
 const Blanket = styled.div`
   min-height: 100vh;
@@ -26,6 +50,7 @@ const LoadingScreen = styled.div`
 
 const Header = styled.pre`
   font-family: 'UbuntuMono';
+  font-size: clamp(0.8em, 1vw, 1em);
 `;
 const Main = styled.div`
   cursor: default;
@@ -35,7 +60,7 @@ const Lines = styled.div``;
 const Line = styled.div``;
 const Prompt = styled.div`
   display: flex;
-  align-items: center;
+  align-items: baseline;
 `;
 
 const CaretSpan = styled.span<{ $leftposition: number }>`
@@ -84,7 +109,7 @@ function App() {
    ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██           ██   ██
    ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████
                                     A Terminal Themed Portfolio By Dewald Breed
-`;
+  `;
   const [isReady, setIsReady] = useState<boolean>(false);
   const [session, setSession] = useState<Session | null>(null);
   const [lineHead, setLineHead] = useState<string>('guest@terminalD:~$');
@@ -141,6 +166,8 @@ function App() {
 
   // handle key presses
   const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (inputDisabled) return;
+
     if (event.key === 'Enter') {
       if (isTyping) {
         setIsTyping(false);
@@ -219,9 +246,10 @@ function App() {
   const getResponse = async (inputValue: string) => {
     const newLine = `${lineHead} ${inputValue}`;
     const { command, args, options } = parseInput(inputValue);
-
     if (command) {
-      if (command === 'help') {
+      const commandToLower = command.toLocaleLowerCase();
+
+      if (commandToLower === 'help') {
         const response: string[] = [];
         Object.entries(COMMANDS).forEach(([key, value]) => {
           if (value['isListed'] === false) return;
@@ -233,8 +261,8 @@ function App() {
 
         setLineHistory([...lineHistory, newLine, '<br>', ...response, '<br>']);
         console.log(response);
-      } else if (COMMANDS[command]) {
-        const cmd = COMMANDS[command];
+      } else if (COMMANDS[commandToLower]) {
+        const cmd = COMMANDS[commandToLower];
         setLineHistory([...lineHistory, newLine]);
         const response = await cmd.execute(args, options);
 
@@ -249,6 +277,8 @@ function App() {
         const emptyResponse = inputValue.trim() === '' ? '' : `Unsupported Command: ${inputValue}`;
         setLineHistory([...lineHistory, newLine, emptyResponse]);
       }
+    } else {
+      setLineHistory([...lineHistory, newLine, inputValue]);
     }
   };
 
@@ -325,6 +355,7 @@ function App() {
 
   return (
     <ThemeProvider theme={activeTheme}>
+      <GlobalStyle />
       <Blanket onClick={setFocus}>
         <Main style={{ fontFamily: 'UbuntuMono' }}>
           <Lines>

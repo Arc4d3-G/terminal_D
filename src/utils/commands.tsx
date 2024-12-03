@@ -60,7 +60,7 @@ export const createCommands = (
   introText: string
 ): Record<string, Command> => {
   return {
-    [introText]: {
+    [introText.toLocaleLowerCase()]: {
       description: [''],
       argsAllowed: false,
       optionsAllowed: false,
