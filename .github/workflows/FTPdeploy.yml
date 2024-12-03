@@ -34,11 +34,12 @@ jobs:
       env:
        NODE_OPTIONS: "--max_old_space_size=4096"
        CI: false
-       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
 
     - name: Build
       run: npm run build
+      env:
+       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         
     - name: FTP Deploy
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
