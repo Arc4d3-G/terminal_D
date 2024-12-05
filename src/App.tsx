@@ -2,10 +2,19 @@ import { useState, useRef, useEffect } from 'react';
 import styled, { createGlobalStyle, ThemeProvider } from 'styled-components';
 import './App.css';
 import { getPresetThemes, Theme } from './utils/themes';
-import { createCommands, HEADER, parseInput, simulateAsync } from './utils/commands';
+import { createCommands, HEADER, simulateAsync } from './utils/commands';
 import { Session } from '@supabase/supabase-js';
 import FontFaceObserver from 'fontfaceobserver';
 
+// #region Type Declarations
+type ParsedInput = {
+  command: string | undefined;
+  args: string[];
+  options: Record<string, string | boolean>;
+};
+// #endregion
+
+// #region Styled-Components
 const GlobalStyle = createGlobalStyle`
   html, body {
     line-height: 1.2;
@@ -39,6 +48,7 @@ const Blanket = styled.div`
     color: ${({ theme }) => theme.bg};
   }
 `;
+
 const LoadingScreen = styled.div`
   min-height: 100vh;
   height: 100%;
@@ -50,12 +60,16 @@ const Header = styled.pre`
   font-family: 'UbuntuMono';
   font-size: clamp(0.8em, 1vw, 1em);
 `;
+
 const Main = styled.div`
   cursor: default;
   padding: 1ch;
 `;
+
 const Lines = styled.div``;
+
 const Line = styled.div``;
+
 const Prompt = styled.div`
   display: flex;
   align-items: baseline;
@@ -97,6 +111,7 @@ const Input = styled.input`
   caret-color: transparent;
   cursor: default;
 `;
+// #endregion
 
 function App() {
   const introText = './initTerminalD.sh';
@@ -116,10 +131,10 @@ function App() {
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const [isTyping, setIsTyping] = useState<boolean>(true);
   const [inputDisabled, setInputDisabled] = useState<boolean>(true);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
   const mainInput = useRef<HTMLInputElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
 
+  // #region State Getters
   const getActiveTheme = () => {
     return activeTheme;
   };
@@ -132,6 +147,9 @@ function App() {
   //   return session;
   // };
 
+  // #endregion
+
+  // Create instance of COMMANDS and pass necessary state functions
   const COMMANDS = createCommands(
     setActiveTheme,
     getActiveTheme,
@@ -234,10 +252,35 @@ function App() {
     }
   };
 
-  // evaluate input and return response
+  // Parse Input for getResponse
+  const parseInput = (input: string): ParsedInput => {
+    // Split by spaces, respecting quoted substrings
+    const inputArr = (input.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map((part) => {
+      return part.replace(/['"]/g, '');
+    });
+
+    const [command, ...rest] = inputArr;
+    const args: string[] = [];
+    const options: Record<string, string | boolean> = {};
+
+    rest.forEach((part) => {
+      if (part.startsWith('-')) {
+        // If option has an '=', treat it as key-value; otherwise, it's a boolean flag
+        const [option, value] = part.split('=');
+        options[option] = value ?? true;
+      } else {
+        args.push(part);
+      }
+    });
+    console.log({ command, args, options });
+    return { command, args, options };
+  };
+
+  // Handle input and return response strings
   const getResponse = async (inputValue: string) => {
     const newLine = `${lineHead} ${inputValue}`;
     const { command, args, options } = parseInput(inputValue);
+
     if (command) {
       const commandToLower = command.toLocaleLowerCase();
 
@@ -274,13 +317,15 @@ function App() {
     }
   };
 
+  // #region UseEffects
   // Auto scroll to bottom
   useEffect(() => {
-    if (bottomRef.current && lineHistory.length > 0) {
-      bottomRef.current.scrollIntoView();
+    if (mainInput.current && lineHistory.length > 0) {
+      mainInput.current.scrollIntoView();
     }
   }, [lineHistory]);
 
+  // Hide input field during loading
   useEffect(() => {
     if (promptRef.current) {
       if (loading) {
@@ -302,50 +347,61 @@ function App() {
   //   }
   // }, [session]);
 
+  // Intro animation
   useEffect(() => {
     if (!isTyping || !isReady) return;
+
+    const startIntroSequence = async () => {
+      const messages = [
+        `${lineHead} ${introText}`,
+        '[INFO] Initializing Terminal-D...',
+        '[INFO] Loading environment variables...',
+        '[INFO] Setting up system paths...',
+        '[INFO] Terminal-D initialized successfully.',
+      ];
+
+      // Display messages sequentially with delays
+      for (const message of messages) {
+        setLineHistory((prevHistory) => [...prevHistory, message]);
+        await simulateAsync(500); // Simulate delay between messages
+      }
+
+      // Add final introductory messages
+      setLineHistory((prevHistory) => [
+        ...prevHistory,
+        HEADER,
+        'Welcome to Terminal-D!',
+        'Type `help` to get started or `about` to learn more about Terminal-D.',
+        '<br>',
+      ]);
+
+      // Reset state
+      setLineHead(defaultLineHead);
+      setCaretLeft(defaultLineHead.length + 2);
+      setIsTyping(false);
+      setInputDisabled(false);
+      setInputValue('');
+      setLoading(false);
+    };
+
     if (isTyping && inputValue === introText) {
       setLoading(true);
-      const introSequence = async () => {
-        const messages = [
-          `${lineHead} ${introText}`,
-          '[INFO] Initializing Terminal-D...',
-          '[INFO] Loading environment variables...',
-          '[INFO] Setting up system paths...',
-          '[INFO] Terminal-D initialized successfully.',
-        ];
-        for (const message of messages) {
-          setLineHistory((prevHistory) => [...prevHistory, message]);
-          await simulateAsync(500);
-        }
-
-        setLineHistory((prevHistory) => [
-          ...prevHistory,
-          HEADER,
-          'Welcome to Terminal-D!',
-          'Type `help` to get started or `about` to learn more about Terminal-D. ',
-          '<br>',
-        ]);
-        setLineHead(defaultLineHead);
-        setCaretLeft(defaultLineHead.length + 2);
-        setIsTyping(false);
-        setInputDisabled(false);
-        setInputValue('');
-        setLoading(false);
-      };
-      introSequence();
-      return;
+      startIntroSequence();
+      return; // Exit to prevent triggering the typing animation
     }
 
+    // Handle typing animation
     const timeout = setTimeout(() => {
       setInputValue((prev) => introText.slice(0, prev.length + 1));
-      setCaretLeft(caretLeft + 1);
+      setCaretLeft((prev) => prev + 1);
     }, 100);
 
-    return () => clearTimeout(timeout); // Cleanup on unmount or re-render
-  }, [inputValue, isTyping, caretLeft, lineHeadLength, lineHead, session, isReady]);
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [inputValue, isTyping, caretLeft, lineHead, session, isReady, introText, defaultLineHead]);
 
-  // loading resources
+  // Load resources, hiding the main app until it's ready
   useEffect(() => {
     const font = new FontFaceObserver('UbuntuMono');
     font
@@ -359,6 +415,23 @@ function App() {
       .catch(() => setIsReady(true));
   }, []);
 
+  // #endregion
+
+  // Evaluate lines for characters which require unique behavior
+  const renderLineContent = (line: string): React.ReactNode => {
+    switch (true) {
+      case line === '<br>':
+        return <br />;
+      case line.includes('<ascii>'):
+        return line.replace('<ascii>', '');
+      case line === HEADER:
+        return <Header>{HEADER}</Header>;
+      default:
+        return line;
+    }
+  };
+
+  // Loading Screen
   if (!isReady) {
     return (
       <ThemeProvider theme={activeTheme}>
@@ -379,17 +452,9 @@ function App() {
               <Line
                 key={index}
                 data-key={index}
-                style={line.includes('<ascii>') ? { fontSize: '0.2em' } : { fontSize: '1.4' }}
+                // style={line.includes('<ascii>') ? { fontSize: '0.2em' } : { fontSize: '1.4' }}
               >
-                {line === '<br>' ? (
-                  <br />
-                ) : line.includes('<ascii>') ? (
-                  line.replace('<ascii>', '')
-                ) : line === HEADER ? (
-                  <Header>{HEADER}</Header>
-                ) : (
-                  line
-                )}
+                {renderLineContent(line)}
               </Line>
             ))}
           </Lines>
@@ -413,7 +478,6 @@ function App() {
               onKeyDown={(e) => handleKeyPress(e)}
               readOnly={inputDisabled}
             ></Input>
-            <div ref={bottomRef} />
           </Prompt>
         </Main>
       </Blanket>

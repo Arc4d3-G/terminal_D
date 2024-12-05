@@ -3,6 +3,7 @@ import { Theme } from './themes.tsx';
 import supabase from './supabase.ts';
 import { Session } from '@supabase/supabase-js';
 
+// #region Type Declarations
 type Command = {
   description: string[];
   argsAllowed: boolean;
@@ -14,11 +15,12 @@ type Command = {
   ) => string | string[] | Promise<string | string[]>;
 };
 
-type ParsedInput = {
-  command: string | undefined;
-  args: string[];
-  options: Record<string, string | boolean>;
-};
+// interface ApiResponse {
+//   data: string | null;
+//   error: string | null;
+// }
+
+// #endregion
 
 export const HEADER = `
 ████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████
@@ -29,34 +31,7 @@ export const HEADER = `
                                     A Terminal Themed Portfolio By Dewald Breed
   `;
 
-// interface ApiResponse {
-//   data: string | null;
-//   error: string | null;
-// }
-
-export const parseInput = (input: string): ParsedInput => {
-  // Split by spaces, respecting quoted substrings
-  const inputArr = (input.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map((part) => {
-    return part.replace(/['"]/g, '');
-  });
-
-  const [command, ...rest] = inputArr;
-  const args: string[] = [];
-  const options: Record<string, string | boolean> = {};
-
-  rest.forEach((part) => {
-    if (part.startsWith('-')) {
-      // If option has an '=', treat it as key-value; otherwise, it's a boolean flag
-      const [option, value] = part.split('=');
-      options[option] = value ?? true;
-    } else {
-      args.push(part);
-    }
-  });
-  console.log({ command, args, options });
-  return { command, args, options };
-};
-
+// Houses objects for each valid command
 export const createCommands = (
   setActiveTheme: Dispatch<SetStateAction<Theme>>,
   getActiveTheme: () => Theme,
@@ -75,13 +50,6 @@ export const createCommands = (
       optionsAllowed: false,
       isListed: false,
       execute: () => {
-        // return `
-        //   Terminal-D was born out of a desire to create a portfolio that went beyond the typical developer website.
-        //   As a junior developer, I wanted a platform to showcase not just my skills, but also my personal projects and ideas in a more interactive and engaging way.
-        //   Instead of a static site or just linking to my GitHub, I envisioned a dynamic environment—a sandbox where I could demonstrate a variety of projects and technologies.
-        //   The terminal, known for its versatility and broad functionality, felt like the perfect medium.
-        //   With Terminal-D, I can integrate and present my work as commands, offering a unique, hands-on experience for users to explore what I’ve built.
-        // `;
         return `
           Terminal-D started as a simple idea: As a junior developer I wanted a portfolio to show off my work, but I also wanted it to be fun, interactive, and way more than just a “here’s my GitHub” link. 
           I’ve got a lot of various interests and ideas, so I needed something flexible—a sandbox to bring everything together. 
@@ -162,6 +130,8 @@ export const createCommands = (
     // },
   };
 };
+
+// #region Misc command functions
 
 const getDate = (dateString: string | null = null) => {
   let date = new Date();
@@ -344,12 +314,6 @@ const handleTheme = (
 //   }
 // };
 
-/**
- * Converts an image from a URL to ASCII art.
- * @param imageUrl - The URL of the image.
- * @param canvasWidth - The desired width of the ASCII art in characters.
- * @returns A promise that resolves to an array of strings, where each string is a line of ASCII art.
- */
 // async function imageUrlToAscii(imageUrl: string, canvasWidth: number): Promise<string[]> {
 //   const asciiChars = '@%#*+=-:. '; // Characters for intensity mapping, from darkest to lightest.
 
@@ -409,3 +373,5 @@ const handleTheme = (
 //     img.onerror = (err) => reject(err);
 //   });
 // }
+
+// #endregion
