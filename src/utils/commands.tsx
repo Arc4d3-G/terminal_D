@@ -5,14 +5,11 @@ import { Session } from '@supabase/supabase-js';
 
 // #region Type Declarations
 type Command = {
-  description: string[];
+  description: string;
   argsAllowed: boolean;
   optionsAllowed: boolean;
   isListed: boolean;
-  execute: (
-    args: string[],
-    options: Record<string, string | boolean>
-  ) => string | string[] | Promise<string | string[]>;
+  execute: (args: string[], options: Record<string, string | boolean>) => string | Promise<string>;
 };
 
 // interface ApiResponse {
@@ -22,14 +19,14 @@ type Command = {
 
 // #endregion
 
-export const HEADER = `
+export const HEADER = `<pre style="font-size: clamp(0.8em, 1vw, 1em); font-family: 'UbuntuMono'">
+
 ████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██           ██████
    ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██           ██   ██
    ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██    █████  ██   ██
    ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██           ██   ██
    ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████      ██████
-                                    A Terminal Themed Portfolio By Dewald Breed
-  `;
+                                    A Terminal Themed Portfolio By Dewald Breed</pre>`;
 
 // Houses objects for each valid command
 export const createCommands = (
@@ -45,22 +42,18 @@ export const createCommands = (
 ): Record<string, Command> => {
   return {
     ['about']: {
-      description: [''],
+      description: '',
       argsAllowed: false,
       optionsAllowed: false,
       isListed: false,
       execute: () => {
-        return `
-          Terminal-D started as a simple idea: As a junior developer I wanted a portfolio to show off my work, but I also wanted it to be fun, interactive, and way more than just a “here’s my GitHub” link. 
-          I’ve got a lot of various interests and ideas, so I needed something flexible—a sandbox to bring everything together. 
-          That’s when I thought, “Why not a terminal?” It’s versatile and perfect for showcasing all kinds of functionality. 
-          Plus, it’s been a great way for me to practice and experiment with different programming technologies and concepts. 
-          With Terminal-D, I can turn my projects into commands and let people explore them while I keep learning and building.
-        `;
+        return `Welcome to Terminal-D<br>
+        Terminal-D started as a way to make my portfolio more interactive and engaging—something beyond a simple GitHub link. I wanted a flexible, creative space to showcase my work and explore my interests, and a terminal emulator felt like the perfect fit.
+        It’s versatile, interactive, and a great way to experiment with different programming technologies. With Terminal-D, I can turn my projects into commands, giving others a fun way to explore my work while I continue learning and building.`;
       },
     },
     ['theme']: {
-      description: ['Change the theme to a preset scheme, or create your own.'],
+      description: 'Change the theme to a preset scheme, or create your own.',
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
@@ -68,24 +61,21 @@ export const createCommands = (
         handleTheme(args, options, setThemes, setActiveTheme, getActiveTheme, getThemes),
     },
     ['clear']: {
-      description: [
+      description:
         'Clear the terminal screen, removing all previous commands and output displayed.',
-      ],
       argsAllowed: false,
       optionsAllowed: false,
       isListed: true,
       execute: () => {
         setLineHistory([
           HEADER,
-          'Welcome to Terminal-D!',
-          'Type `help` to get started or `about` to learn more about Terminal-D. ',
-          '<br>',
+          `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
         ]);
         return '';
       },
     },
     ['date']: {
-      description: ['Returns the current date/time. Args: date "dateString" to specify a date.'],
+      description: `Returns the current date/time. Args: date "dateString" to specify a date.`,
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
@@ -99,10 +89,8 @@ export const createCommands = (
       },
     },
     ['login']: {
-      description: [
-        'Login with your username and password, or use the "new" keyword to register a new account.',
-        'Example: `login new "yourEmailAddress" "yourPassWord"` to register.',
-      ],
+      description: `Login with your username and password, or use the "new" keyword to register a new account.<br>
+        Example: login new "yourEmailAddress" "yourPassWord" to register.`,
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
@@ -265,10 +253,9 @@ const handleTheme = (
       setActiveTheme(newTheme);
       return `New theme "${name}" has been successfully created.`;
     } else {
-      return [
-        `Please provide a valid colors string (i.e. blue, black, azure ect.).`,
-        `Example: theme new "themeName" -bg="backgroundColorName" -text="textColorName"`,
-      ];
+      return `
+      Please provide a valid colors string (i.e. blue, black, azure ect.)<br>
+      Example: theme new "themeName" -bg="backgroundColorName" -text="textColorName"`;
     }
   } else {
     // select preset
@@ -277,13 +264,12 @@ const handleTheme = (
     const allThemes = getThemes();
     const themeArg = args[0]?.toLowerCase();
 
-    if (options['-l']) return Object.keys(allThemes).map((key) => key);
+    // if (options['-l']) return Object.keys(allThemes).map((key) => key);
 
     if (!themeArg || themeArg.trim() === '')
-      return [
-        'Please provide a valid theme name, or use the "new" keyword to create a new theme.',
-        'Example: theme new -bg="backgroundColor" -text="fontColor"',
-      ];
+      return `Please provide a valid theme name, or use the "new" keyword to create a new theme.<br>
+        Example: theme new -bg="backgroundColor" -text="fontColor"
+      `;
 
     const validTheme = allThemes[themeArg];
     if (validTheme && validTheme !== activeTheme) {

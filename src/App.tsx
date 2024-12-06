@@ -56,10 +56,10 @@ const LoadingScreen = styled.div`
   background: ${({ theme }) => theme.bg};
 `;
 
-const Header = styled.pre`
-  font-family: 'UbuntuMono';
-  font-size: clamp(0.8em, 1vw, 1em);
-`;
+// const Header = styled.pre`
+//   font-family: 'UbuntuMono';
+//   font-size: clamp(0.8em, 1vw, 1em);
+// `;
 
 const Main = styled.div`
   cursor: default;
@@ -290,7 +290,7 @@ function App() {
           if (value['isListed'] === false) return;
 
           response.push(key.toUpperCase());
-          response.push(...value.description);
+          response.push(value.description);
           response.push('<br>');
         });
 
@@ -370,9 +370,7 @@ function App() {
       setLineHistory((prevHistory) => [
         ...prevHistory,
         HEADER,
-        'Welcome to Terminal-D!',
-        'Type `help` to get started or `about` to learn more about Terminal-D.',
-        '<br>',
+        `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
       ]);
 
       // Reset state
@@ -418,18 +416,18 @@ function App() {
   // #endregion
 
   // Evaluate lines for characters which require unique behavior
-  const renderLineContent = (line: string): React.ReactNode => {
-    switch (true) {
-      case line === '<br>':
-        return <br />;
-      case line.includes('<ascii>'):
-        return line.replace('<ascii>', '');
-      case line === HEADER:
-        return <Header>{HEADER}</Header>;
-      default:
-        return line;
-    }
-  };
+  // const renderLineContent = (line: string): React.ReactNode => {
+  //   switch (true) {
+  //     case line === '<br>':
+  //       return <br />;
+  //     case line.includes('<ascii>'):
+  //       return line.replace('<ascii>', '');
+  //     case line === HEADER:
+  //       return <Header>{HEADER}</Header>;
+  //     default:
+  //       return line;
+  //   }
+  // };
 
   // Loading Screen
   if (!isReady) {
@@ -453,9 +451,8 @@ function App() {
                 key={index}
                 data-key={index}
                 // style={line.includes('<ascii>') ? { fontSize: '0.2em' } : { fontSize: '1.4' }}
-              >
-                {renderLineContent(line)}
-              </Line>
+                dangerouslySetInnerHTML={{ __html: line }}
+              />
             ))}
           </Lines>
           {/* {loading && (
