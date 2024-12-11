@@ -1,7 +1,6 @@
 import { Dispatch, SetStateAction } from 'react';
 import { Theme } from './themes.tsx';
-import supabase from './supabase.ts';
-import { Session } from '@supabase/supabase-js';
+import { loginUser, registerUser, User } from './auth.ts';
 
 // #region Type Declarations
 type Command = {
@@ -36,7 +35,7 @@ export const createCommands = (
   getThemes: () => Record<string, Theme>,
   setLoading: Dispatch<SetStateAction<boolean>>,
   setLineHistory: Dispatch<SetStateAction<string[]>>,
-  setSession: Dispatch<SetStateAction<Session | null>>,
+  setSession: Dispatch<SetStateAction<User | null>>,
   setLineHead: Dispatch<React.SetStateAction<string>>,
   setCaretLeft: Dispatch<React.SetStateAction<number>>
 ): Record<string, Command> => {
@@ -160,7 +159,7 @@ export function simulateAsync(delay: number) {
 const handleAuth = async (
   args: string[],
   setLoading: Dispatch<SetStateAction<boolean>>,
-  setSession: Dispatch<SetStateAction<Session | null>>,
+  setSession: Dispatch<SetStateAction<User | null>>,
   setCaretLeft: Dispatch<React.SetStateAction<number>>,
   setLineHead: Dispatch<React.SetStateAction<string>>
 ) => {
@@ -173,19 +172,13 @@ const handleAuth = async (
       const email = args[1];
       const password = args[2];
       if (email && password) {
-        const { data, error } = await supabase.auth.signUp({
-          email: email,
-          password: password,
-        });
+        const { data, error } = await registerUser(email, password);
 
         if (error) {
-          throw new Error(error.message);
+          return error;
         }
 
-        setSession(data.session);
-        return data.user
-          ? `Registration successful! Welcome, ${email}.`
-          : 'Registration complete, but no user data returned.';
+        return data ? data : 'Something went wrong.';
       } else {
         return 'To Register, please provide a valid email address and password. (i.e. login new "youremail@mail.com" "yourpassword"';
       }
@@ -195,23 +188,21 @@ const handleAuth = async (
       const password = args[1];
 
       if (email && password) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password,
-        });
+        const { data, error } = await loginUser(email, password);
 
         if (error) {
-          throw new Error(error.message);
+          return error;
         }
 
-        setSession(data.session);
-        const mailName = email.split('@')[0];
-        setLineHead(`${mailName}@terminalD:~$`);
-        setCaretLeft(`${mailName}@terminalD:~$`.length + 2);
-
-        return data.user
-          ? `Login successful! Welcome back, ${mailName}.`
-          : 'Login successful, but no user data returned.';
+        if (data) {
+          setSession(data);
+          const username = data.email.split('@')[0];
+          setLineHead(`${username}@terminalD:~$`);
+          setCaretLeft(`${username}@terminalD:~$`.length + 2);
+          return `Login successful! Welcome back, ${username}.`;
+        } else {
+          return 'Something went wrong.';
+        }
       } else {
         return 'To Login, please provide your email and password. (i.e., login "youremail@mail.com" "yourpassword"';
       }
@@ -284,21 +275,6 @@ const handleTheme = (
     }
   }
 };
-
-// const getRequest = async (url: string): Promise<ApiResponse> => {
-//   try {
-//     const response = await fetch(url);
-
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! status: ${response.status}`);
-//     }
-
-//     const data = await response.json();
-//     return { data, error: null };
-//   } catch (error: any) {
-//     return { data: null, error: error.message || 'Something went wrong' };
-//   }
-// };
 
 // async function imageUrlToAscii(imageUrl: string, canvasWidth: number): Promise<string[]> {
 //   const asciiChars = '@%#*+=-:. '; // Characters for intensity mapping, from darkest to lightest.
