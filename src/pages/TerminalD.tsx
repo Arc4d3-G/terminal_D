@@ -27,8 +27,8 @@ const GlobalStyle = createGlobalStyle`
     height: 100%;
     width: 100%;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
   }
 
   pre {
@@ -55,32 +55,27 @@ const LoadingScreen = styled.div`
   background: ${({ theme }) => theme.bg};
 `;
 
-// const Header = styled.pre`
-//   font-family: 'UbuntuMono';
-//   font-size: clamp(0.8em, 1vw, 1em);
-// `;
-
 const Main = styled.div`
   cursor: default;
   padding: 1ch;
 `;
 
-const Lines = styled.div``;
+const Lines = styled.div`
+  word-wrap: break-word;
+  word-break: break-all;
+`;
 
 const Line = styled.div``;
 
-const Prompt = styled.div`
-  display: flex;
-  align-items: baseline;
-`;
+const Prompt = styled.div``;
 
-const CaretSpan = styled.span<{ $leftposition: number }>`
+const Caret = styled.span<{ $isCaretMoving: boolean }>`
   position: absolute;
-  left: ${({ $leftposition }) => `${$leftposition}ch`};
   width: 1ch;
-  height: 1em;
+  height: 1.1em;
   background-color: ${({ theme }) => theme.font};
-  animation: blink 1s steps(2, start) infinite;
+  animation: ${({ $isCaretMoving }) =>
+    $isCaretMoving ? 'none' : 'blink 1s steps(2, start) infinite'};
   pointer-events: none;
   cursor: none;
 
@@ -96,20 +91,25 @@ const CaretSpan = styled.span<{ $leftposition: number }>`
   }
 `;
 
-const Input = styled.input`
-  width: -webkit-fill-available;
-  height: -webkit-fill-available;
-  margin-left: 1ch;
-  background-color: transparent;
-  border: none;
-  outline: none;
+const PromptPre = styled.pre`
+  position: relative;
+  font-family: inherit;
   color: inherit;
   font-size: inherit;
-  font-family: inherit;
   padding: 0px;
-  caret-color: transparent;
-  cursor: default;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
 `;
+
+const HiddenTextAreaInput = styled.textarea`
+  position: absolute;
+  /* top: -9999px; */
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+`;
+
 // #endregion
 function App() {
   const introText = './initTerminalD.sh';
@@ -118,18 +118,20 @@ function App() {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [session, setSession] = useState<User | null>(null);
   const [lineHead, setLineHead] = useState<string>(introLineHead);
-  const lineHeadLength = lineHead.length + 2;
   const [loading, setLoading] = useState<boolean>(false);
   const [themes, setThemes] = useState<Record<string, Theme>>(getPresetThemes());
   const [activeTheme, setActiveTheme] = useState<Theme>(themes['dark']);
   const [inputValue, setInputValue] = useState('');
-  const [caretLeft, setCaretLeft] = useState(lineHeadLength);
+  const [caretPosition, setCaretPosition] = useState(0);
   const [lineHistory, setLineHistory] = useState<Array<string>>([]);
   const [commandHistory, setCommandHistory] = useState<Array<string>>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
-  const [isTyping, setIsTyping] = useState<boolean>(true);
+  const [isIntroTyping, setIsIntroTyping] = useState<boolean>(true);
+  const [isCaretMoving, setIsCaretMoving] = useState(false);
   const [inputDisabled, setInputDisabled] = useState<boolean>(true);
-  const mainInput = useRef<HTMLInputElement | null>(null);
+  const [isPrompting, setIsPrompting] = useState<string | null>(null);
+  const [inputBuffer, setInputBuffer] = useState<Array<string>>([]);
+  const mainInput = useRef<HTMLTextAreaElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
 
   // #region State Getters
@@ -141,10 +143,17 @@ function App() {
     return themes;
   };
 
+  const getIsPrompting = () => {
+    return isPrompting;
+  };
+
+  const getInputBuffer = () => {
+    return inputBuffer;
+  };
+
   // const getSession = () => {
   //   return session;
   // };
-
   // #endregion
 
   // Create instance of COMMANDS and pass necessary state functions
@@ -157,30 +166,57 @@ function App() {
     setLineHistory,
     setSession,
     setLineHead,
-    setCaretLeft
+    setIsPrompting,
+    getIsPrompting,
+    setInputBuffer,
+    getInputBuffer,
+    defaultLineHead
   );
 
+  // #region Caret Logic functions
+  const updateCaretPosition = () => {
+    const position = mainInput.current?.selectionStart || 0;
+    setCaretPosition(position);
+  };
+
+  const renderInputWithCaret = () => {
+    const beforeCaret = inputValue.slice(0, caretPosition);
+    const afterCaret = inputValue.slice(caretPosition);
+
+    return (
+      <>
+        {beforeCaret}
+        <Caret $isCaretMoving={isCaretMoving} />
+        {afterCaret}
+      </>
+    );
+  };
+  // #endregion
+
+  // #region Input & Event handlers
   // set input value on change
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const curInputLen = event.target.value.length;
-    const previousInputLen = inputValue.length;
-
-    if (curInputLen > previousInputLen) {
-      setCaretLeft(caretLeft + 1);
-    }
-
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(event.target.value);
+    updateCaretPosition();
+  };
+
+  const handleKeyUp = () => {
+    setIsCaretMoving(false);
+    updateCaretPosition();
   };
 
   // handle key presses
-  const handleKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (inputDisabled) return;
+    if (!isCaretMoving) setIsCaretMoving(true);
+    requestAnimationFrame(updateCaretPosition);
 
     if (event.key === 'Enter') {
-      if (isTyping) {
-        setIsTyping(false);
+      event.preventDefault();
+      if (isIntroTyping) {
+        setIsIntroTyping(false);
       }
-      if (inputValue.trim() != '') {
+      if (inputValue.trim() != '' && !isPrompting) {
         if (!commandHistory.includes(inputValue)) {
           setCommandHistory([inputValue, ...commandHistory]);
         } else {
@@ -190,7 +226,6 @@ function App() {
       }
       getResponse(inputValue);
       setInputValue('');
-      setCaretLeft(lineHeadLength);
       setHistoryIndex(-1);
     }
 
@@ -201,7 +236,6 @@ function App() {
           const newCommand = commandHistory[historyIndex + 1];
           setHistoryIndex(historyIndex + 1);
           setInputValue(newCommand);
-          setCaretLeft(newCommand.length + lineHeadLength);
           if (mainInput.current) {
             mainInput.current.setSelectionRange(-1, -1);
           }
@@ -215,30 +249,10 @@ function App() {
           const newCommand = commandHistory[historyIndex - 1];
           setHistoryIndex(historyIndex - 1);
           setInputValue(newCommand);
-          setCaretLeft(newCommand.length + lineHeadLength);
         } else {
-          setHistoryIndex(-1); // Reset index when reaching the end
-          setInputValue(''); // Clear input when reaching beyond the start CHANGE THIS TO use original input value instead
-          setCaretLeft(lineHeadLength);
+          setHistoryIndex(-1);
+          setInputValue('');
         }
-      }
-    }
-
-    if (event.key === 'Backspace') {
-      if (caretLeft > lineHeadLength) {
-        setCaretLeft(caretLeft - 1);
-      }
-    }
-
-    if (event.key === 'ArrowLeft') {
-      if (caretLeft > lineHeadLength) {
-        setCaretLeft(caretLeft - 1);
-      }
-    }
-
-    if (event.key === 'ArrowRight') {
-      if (caretLeft < inputValue.length + lineHeadLength) {
-        setCaretLeft(caretLeft + 1);
       }
     }
   };
@@ -271,6 +285,7 @@ function App() {
       }
     });
     console.log({ command, args, options });
+    console.log(inputBuffer);
     return { command, args, options };
   };
 
@@ -278,6 +293,11 @@ function App() {
   const getResponse = async (inputValue: string) => {
     const newLine = `${lineHead} ${inputValue}`;
     const { command, args, options } = parseInput(inputValue);
+
+    if (isPrompting) {
+      executeCommand(isPrompting, [inputValue], {}, newLine);
+      return;
+    }
 
     // If no command is entered, echo the input
     if (!command) {
@@ -336,13 +356,13 @@ function App() {
       setLineHistory((prevHistory) => [...prevHistory, newLine, response]);
     }
   };
+  // #endregion
 
   // #region UseEffects
-
   // Auto scroll to bottom
   useEffect(() => {
-    if (mainInput.current && lineHistory.length > 0) {
-      mainInput.current.scrollIntoView();
+    if (promptRef.current && lineHistory.length > 0) {
+      promptRef.current.scrollIntoView();
     }
   }, [lineHistory]);
 
@@ -360,7 +380,7 @@ function App() {
 
   // Intro animation
   useEffect(() => {
-    if (!isTyping || !isReady) return;
+    if (!isIntroTyping || !isReady) return;
 
     const displayIntroMessages = async () => {
       const messages = [
@@ -382,7 +402,6 @@ function App() {
         `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
       ]);
       setLineHead(defaultLineHead);
-      setCaretLeft(defaultLineHead.length + 2);
       finalizeIntro();
     };
 
@@ -393,37 +412,37 @@ function App() {
         `Welcome back to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
       ]);
       setLineHead(`${username}@terminalD:~$`);
-      setCaretLeft(`${username}@terminalD:~$`.length + 2);
       finalizeIntro();
     };
 
     const handleTypingAnimation = () => {
+      setIsCaretMoving(true);
       const timeout = setTimeout(() => {
+        updateCaretPosition();
         setInputValue((prev) => introText.slice(0, prev.length + 1));
-        setCaretLeft((prev) => prev + 1);
       }, 100);
 
       return () => clearTimeout(timeout);
     };
 
     const finalizeIntro = () => {
-      setIsTyping(false);
+      setIsIntroTyping(false);
+      setIsCaretMoving(false);
       setInputDisabled(false);
       setInputValue('');
       setLoading(false);
     };
 
     // Intro logic
-    if (isTyping && inputValue === introText && !session) {
+    if (isIntroTyping && inputValue === introText && !session) {
       setLoading(true);
-
       displayIntroMessages();
     } else if (session) {
       handleReturningUser(session);
     } else {
       return handleTypingAnimation();
     }
-  }, [inputValue, isTyping, caretLeft, lineHead, session, isReady, introText, defaultLineHead]);
+  }, [inputValue, isIntroTyping, lineHead, session, isReady, introText, defaultLineHead]);
 
   // Load resources, hiding the main app until it's ready
   useEffect(() => {
@@ -435,8 +454,6 @@ function App() {
         const { data } = await fetchUserData(token);
 
         if (data) {
-          console.log('Session Found');
-          console.log(data);
           setSession(data);
         }
       }
@@ -477,19 +494,22 @@ function App() {
               />
             ))}
           </Lines>
+          {loading && <Line>Loading...</Line>}
           <Prompt ref={promptRef}>
-            {lineHead}
-            <CaretSpan $leftposition={caretLeft} />
-            <Input
-              spellCheck={false}
+            <PromptPre>
+              <span>{lineHead} </span>
+              {renderInputWithCaret()}
+            </PromptPre>
+            <HiddenTextAreaInput
               ref={mainInput}
-              autoFocus
-              type='text'
               value={inputValue}
               onChange={(e) => handleInputChange(e)}
-              onKeyDown={(e) => handleKeyPress(e)}
+              onKeyDown={(e) => handleKeyDown(e)}
+              onKeyUp={() => handleKeyUp()}
               readOnly={inputDisabled}
-            ></Input>
+              autoFocus
+              rows={1}
+            />
           </Prompt>
         </Main>
       </Blanket>

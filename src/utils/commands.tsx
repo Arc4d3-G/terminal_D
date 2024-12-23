@@ -37,7 +37,11 @@ export const createCommands = (
   setLineHistory: Dispatch<SetStateAction<string[]>>,
   setSession: Dispatch<SetStateAction<User | null>>,
   setLineHead: Dispatch<React.SetStateAction<string>>,
-  setCaretLeft: Dispatch<React.SetStateAction<number>>
+  setIsPrompting: React.Dispatch<React.SetStateAction<string | null>>,
+  getIsPrompting: () => string | null,
+  setInputBuffer: Dispatch<React.SetStateAction<string[]>>,
+  getInputBuffer: () => string[],
+  defaultLineHead: string
 ): Record<string, Command> => {
   return {
     ['about']: {
@@ -88,33 +92,96 @@ export const createCommands = (
       },
     },
     ['login']: {
-      description: `Login with your username and password, or use the "new" keyword to register a new account.<br>
-        Example: login new "yourEmailAddress" "yourPassWord" to register.`,
+      description: `Login with email and provide your password when prompted.<br>
+        Example: login -u yourEmailAddress.`,
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
-      execute: async (args) => handleAuth(args, setLoading, setSession, setCaretLeft, setLineHead),
-    },
-    // ['dog']: {
-    //   description: [''],
-    //   argsAllowed: false,
-    //   optionsAllowed: false,
-    //   isListed: true,
-    //   execute: async () => {
-    //     setLoading(true);
+      execute: async (args, options) => {
+        const usernameOption = options['-u'];
+        const username = args[0]?.toLocaleLowerCase();
+        const isPrompting = getIsPrompting();
 
-    //     const { data, error } = await getRequest('https://random.dog/woof.json');
-    //     if (error) {
-    //       setLoading(false);
-    //       return error.message;
-    //     }
-    //     const { fileSizeBytes, url } = data;
-    //     console.log(data);
-    //     const ascii = await imageUrlToAscii(url, 150);
-    //     setLoading(false);
-    //     return ascii;
-    //   },
-    // },
+        if (usernameOption && username) {
+          //prompt for password
+          setIsPrompting('login');
+          setInputBuffer([username]);
+          setLineHead('Password:');
+          return '';
+        } else if (isPrompting && isPrompting === 'login') {
+          // attempt to login in with credentials
+          const bufferUsername = getInputBuffer()[0];
+          const password = args[0];
+          setLineHead(defaultLineHead);
+
+          return handleAuth(
+            bufferUsername,
+            password,
+            false,
+            setLoading,
+            setSession,
+            setLineHead,
+            setInputBuffer,
+            setIsPrompting
+          );
+        } else {
+          return 'To Login, please provide your email (i.e., login -u youremail@mail.com) and when prompted, provide your password.';
+        }
+      },
+    },
+    ['register']: {
+      description: `Register with email and provide your password when prompted.<br>
+        Example: register -u yourEmailAddress.`,
+      argsAllowed: true,
+      optionsAllowed: false,
+      isListed: true,
+      execute: async (args, options) => {
+        const usernameOption = options['-u'];
+        const username = args[0]?.toLocaleLowerCase();
+        const isPrompting = getIsPrompting();
+        const inputBuffer = getInputBuffer();
+
+        if (usernameOption && username) {
+          //prompt for password
+          setIsPrompting('register');
+          setInputBuffer([username]);
+          setLineHead('Enter your password:');
+          return '';
+        } else if (isPrompting === 'register' && inputBuffer.length == 1) {
+          // confirm password
+          // const bufferUsername = getInputBuffer()[0];
+          const firstPassword = args[0];
+          setInputBuffer((prev) => [...prev, firstPassword]);
+          setLineHead('Confirm your password:');
+          return '';
+        } else if (isPrompting === 'register' && inputBuffer.length == 2) {
+          // attempt to login in with credentials
+          const [bufferUsername, firstPass] = getInputBuffer();
+          const secondPass = args[0];
+
+          if (firstPass !== secondPass) {
+            setInputBuffer([bufferUsername]); // Send back to previous step
+            setLineHead('Enter your password:');
+            return 'Passwords do not match. Please try again';
+          }
+
+          setLineHead(defaultLineHead);
+
+          return handleAuth(
+            bufferUsername,
+            firstPass,
+            true,
+            setLoading,
+            setSession,
+            setLineHead,
+            setInputBuffer,
+            setIsPrompting
+          );
+        } else {
+          return 'To Register, please provide your email (i.e., Register -u youremail@mail.com) and when prompted, provide your password.';
+        }
+      },
+    },
   };
 };
 
@@ -157,22 +224,22 @@ export function simulateAsync(delay: number) {
 }
 
 const handleAuth = async (
-  args: string[],
+  username: string,
+  password: string,
+  isRegistration: boolean,
   setLoading: Dispatch<SetStateAction<boolean>>,
   setSession: Dispatch<SetStateAction<User | null>>,
-  setCaretLeft: Dispatch<React.SetStateAction<number>>,
-  setLineHead: Dispatch<React.SetStateAction<string>>
+  setLineHead: Dispatch<React.SetStateAction<string>>,
+  setInputBuffer: Dispatch<SetStateAction<string[]>>,
+  setIsPrompting: Dispatch<SetStateAction<string | null>>
 ) => {
   setLoading(true);
-  const isNew = args[0]?.toLowerCase() === 'new';
 
   try {
-    if (isNew) {
+    if (isRegistration) {
       // Register
-      const email = args[1];
-      const password = args[2];
-      if (email && password) {
-        const { data, error } = await registerUser(email, password);
+      if (username && password) {
+        const { data, error } = await registerUser(username, password);
 
         if (error) {
           return error;
@@ -180,15 +247,12 @@ const handleAuth = async (
 
         return data ? data : 'Something went wrong.';
       } else {
-        return 'To Register, please provide a valid email address and password. (i.e. login new "youremail@mail.com" "yourpassword"';
+        return 'To Register, please provide your email (i.e., Register -u youremail@mail.com) and when prompted, provide your password.';
       }
     } else {
       // LOGIN
-      const email = args[0];
-      const password = args[1];
-
-      if (email && password) {
-        const { data, error } = await loginUser(email, password);
+      if (username && password) {
+        const { data, error } = await loginUser(username, password);
 
         if (error) {
           return error;
@@ -198,13 +262,12 @@ const handleAuth = async (
           setSession(data);
           const username = data.email.split('@')[0];
           setLineHead(`${username}@terminalD:~$`);
-          setCaretLeft(`${username}@terminalD:~$`.length + 2);
           return `Login successful! Welcome back, ${username}.`;
         } else {
           return 'Something went wrong.';
         }
       } else {
-        return 'To Login, please provide your email and password. (i.e., login "youremail@mail.com" "yourpassword"';
+        return 'To Login, please provide your email (i.e., login -u youremail@mail.com) and when prompted, provide your password.';
       }
     }
   } catch (error: unknown) {
@@ -215,6 +278,8 @@ const handleAuth = async (
     }
   } finally {
     setLoading(false);
+    setIsPrompting(null);
+    setInputBuffer([]);
   }
 };
 
@@ -275,65 +340,4 @@ const handleTheme = (
     }
   }
 };
-
-// async function imageUrlToAscii(imageUrl: string, canvasWidth: number): Promise<string[]> {
-//   const asciiChars = '@%#*+=-:. '; // Characters for intensity mapping, from darkest to lightest.
-
-//   return new Promise((resolve, reject) => {
-//     const img = new Image();
-//     img.crossOrigin = 'Anonymous'; // Enable CORS to fetch images from other domains.
-//     img.src = imageUrl;
-
-//     img.onload = () => {
-//       // Calculate canvas height maintaining aspect ratio.
-//       const aspectRatio = img.height / img.width;
-//       const canvasHeight = Math.round(canvasWidth * aspectRatio);
-
-//       // Create a canvas to process the image.
-//       const canvas = document.createElement('canvas');
-//       canvas.width = canvasWidth;
-//       canvas.height = canvasHeight;
-
-//       const ctx = canvas.getContext('2d');
-//       if (!ctx) {
-//         reject(new Error('Failed to get 2D context.'));
-//         return;
-//       }
-
-//       // Draw the image on the canvas.
-//       ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
-
-//       // Get image data.
-//       const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-//       const { data, width, height } = imageData;
-
-//       const asciiArt: string[] = [];
-
-//       // Convert pixels to ASCII characters.
-//       for (let y = 0; y < height; y++) {
-//         let line = '';
-//         for (let x = 0; x < width; x++) {
-//           const offset = (y * width + x) * 4;
-//           const r = data[offset];
-//           const g = data[offset + 1];
-//           const b = data[offset + 2];
-
-//           // Calculate grayscale value.
-//           const grayscale = Math.round((r + g + b) / 3);
-
-//           // Map grayscale to ASCII character.
-//           const charIndex = Math.floor((grayscale / 255) * (asciiChars.length - 1));
-//           line += asciiChars[charIndex];
-//         }
-//         line += '<ascii>';
-//         asciiArt.push(line); // Add the line to the array.
-//       }
-
-//       resolve(asciiArt);
-//     };
-
-//     img.onerror = (err) => reject(err);
-//   });
-// }
-
 // #endregion
