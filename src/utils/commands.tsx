@@ -123,7 +123,6 @@ export const createCommands = (
             false,
             setLoading,
             setSession,
-            setLineHead,
             setInputBuffer,
             setIsPrompting
           );
@@ -180,7 +179,6 @@ export const createCommands = (
             true,
             setLoading,
             setSession,
-            setLineHead,
             setInputBuffer,
             setIsPrompting
           );
@@ -251,7 +249,6 @@ const handleAuth = async (
   isRegistration: boolean,
   setLoading: Dispatch<SetStateAction<boolean>>,
   setSession: Dispatch<SetStateAction<User | null>>,
-  setLineHead: Dispatch<React.SetStateAction<string>>,
   setInputBuffer: Dispatch<SetStateAction<string[]>>,
   setIsPrompting: Dispatch<SetStateAction<string | null>>
 ) => {
