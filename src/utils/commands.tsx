@@ -41,6 +41,7 @@ export const createCommands = (
   getIsPrompting: () => string | null,
   setInputBuffer: Dispatch<React.SetStateAction<string[]>>,
   getInputBuffer: () => string[],
+  getSession: () => User | null,
   defaultLineHead: string
 ): Record<string, Command> => {
   return {
@@ -98,6 +99,8 @@ export const createCommands = (
       optionsAllowed: false,
       isListed: true,
       execute: async (args, options) => {
+        if (getSession())
+          return 'Cannot login while already logged in. Please log out and try again.';
         const usernameOption = options['-u'];
         const username = args[0]?.toLocaleLowerCase();
         const isPrompting = getIsPrompting();
@@ -136,6 +139,8 @@ export const createCommands = (
       optionsAllowed: false,
       isListed: true,
       execute: async (args, options) => {
+        if (getSession()) return 'Cannot register while logged in. Please log out and try again.';
+
         const usernameOption = options['-u'];
         const username = args[0]?.toLocaleLowerCase();
         const isPrompting = getIsPrompting();
@@ -143,19 +148,21 @@ export const createCommands = (
 
         if (usernameOption && username) {
           //prompt for password
+
           setIsPrompting('register');
           setInputBuffer([username]);
           setLineHead('Enter your password:');
           return '';
         } else if (isPrompting === 'register' && inputBuffer.length == 1) {
           // confirm password
-          // const bufferUsername = getInputBuffer()[0];
+
           const firstPassword = args[0];
           setInputBuffer((prev) => [...prev, firstPassword]);
           setLineHead('Confirm your password:');
           return '';
         } else if (isPrompting === 'register' && inputBuffer.length == 2) {
           // attempt to login in with credentials
+
           const [bufferUsername, firstPass] = getInputBuffer();
           const secondPass = args[0];
 
@@ -179,6 +186,21 @@ export const createCommands = (
           );
         } else {
           return 'To Register, please provide your email (i.e., Register -u youremail@mail.com) and when prompted, provide your password.';
+        }
+      },
+    },
+    ['logout']: {
+      description: `Log out from your current session.`,
+      argsAllowed: false,
+      optionsAllowed: false,
+      isListed: true,
+      execute: () => {
+        if (getSession()) {
+          setSession(null);
+          localStorage.removeItem('token');
+          return 'Successfully logged out.';
+        } else {
+          return 'You are already logged out.';
         }
       },
     },
@@ -260,8 +282,8 @@ const handleAuth = async (
 
         if (data) {
           setSession(data);
-          const username = data.email.split('@')[0];
-          setLineHead(`${username}@terminalD:~$`);
+          // const username = data.email.split('@')[0];
+          // setLineHead(`${username}@terminalD:~$`);
           return `Login successful! Welcome back, ${username}.`;
         } else {
           return 'Something went wrong.';

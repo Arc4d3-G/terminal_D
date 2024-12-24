@@ -99,12 +99,11 @@ const PromptPre = styled.pre`
   padding: 0px;
   white-space: pre-wrap;
   word-wrap: break-word;
-  word-break: break-all;
+  word-break: break-word;
 `;
 
 const HiddenTextAreaInput = styled.textarea`
   position: absolute;
-  /* top: -9999px; */
   left: -9999px;
   opacity: 0;
   pointer-events: none;
@@ -151,9 +150,9 @@ function App() {
     return inputBuffer;
   };
 
-  // const getSession = () => {
-  //   return session;
-  // };
+  const getSession = () => {
+    return session;
+  };
   // #endregion
 
   // Create instance of COMMANDS and pass necessary state functions
@@ -170,6 +169,7 @@ function App() {
     getIsPrompting,
     setInputBuffer,
     getInputBuffer,
+    getSession,
     defaultLineHead
   );
 
@@ -194,7 +194,7 @@ function App() {
   // #endregion
 
   // #region Input & Event handlers
-  // set input value on change
+
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(event.target.value);
     updateCaretPosition();
@@ -205,7 +205,6 @@ function App() {
     updateCaretPosition();
   };
 
-  // handle key presses
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (inputDisabled) return;
     if (!isCaretMoving) setIsCaretMoving(true);
@@ -257,14 +256,12 @@ function App() {
     }
   };
 
-  // set focus to main input
   const setFocus = () => {
     if (mainInput.current) {
       mainInput.current.focus();
     }
   };
 
-  // Parse Input for getResponse
   const parseInput = (input: string): ParsedInput => {
     // Split by spaces, respecting quoted substrings
     const inputArr = (input.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map((part) => {
@@ -289,7 +286,6 @@ function App() {
     return { command, args, options };
   };
 
-  // Handle input and return response strings
   const getResponse = async (inputValue: string) => {
     const newLine = `${lineHead} ${inputValue}`;
     const { command, args, options } = parseInput(inputValue);
@@ -315,7 +311,6 @@ function App() {
       handleUnsupportedCommand(newLine, inputValue);
     }
 
-    // Display the help response
     function displayHelp(newLine: string) {
       const response: string[] = [];
       Object.entries(COMMANDS).forEach(([key, value]) => {
@@ -326,7 +321,6 @@ function App() {
       setLineHistory((prevHistory) => [...prevHistory, newLine, '<br>', ...response, '<br>']);
     }
 
-    // Execute a valid command
     async function executeCommand(
       command: string,
       args: string[],
@@ -347,7 +341,6 @@ function App() {
       }
     }
 
-    // Handle unsupported or empty commands
     function handleUnsupportedCommand(newLine: string, inputValue: string) {
       const response =
         inputValue.trim() === ''
@@ -359,6 +352,16 @@ function App() {
   // #endregion
 
   // #region UseEffects
+
+  // Set line header according to session
+  useEffect(() => {
+    if (session) {
+      setLineHead(`${session.email.split('@')[0]}@terminalD:~$`);
+    } else if (!session && !isIntroTyping) {
+      setLineHead(defaultLineHead);
+    }
+  }, [session, isIntroTyping]);
+
   // Auto scroll to bottom
   useEffect(() => {
     if (promptRef.current && lineHistory.length > 0) {
@@ -401,17 +404,14 @@ function App() {
         HEADER,
         `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
       ]);
-      setLineHead(defaultLineHead);
       finalizeIntro();
     };
 
-    const handleReturningUser = (session: User) => {
-      const username = session.email.split('@')[0];
+    const handleReturningUser = () => {
       setLineHistory([
         HEADER,
         `Welcome back to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
       ]);
-      setLineHead(`${username}@terminalD:~$`);
       finalizeIntro();
     };
 
@@ -438,7 +438,7 @@ function App() {
       setLoading(true);
       displayIntroMessages();
     } else if (session) {
-      handleReturningUser(session);
+      handleReturningUser();
     } else {
       return handleTypingAnimation();
     }
@@ -494,7 +494,7 @@ function App() {
               />
             ))}
           </Lines>
-          {loading && <Line>Loading...</Line>}
+          {loading && !isIntroTyping && <Line>Loading...</Line>}
           <Prompt ref={promptRef}>
             <PromptPre>
               <span>{lineHead} </span>
