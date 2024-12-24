@@ -1,13 +1,12 @@
 import './App.css';
 import Verify from './pages/Verify';
 import TerminalD from './pages/TerminalD';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-
-// Change routing depending on wether terminalD is being developed individually or within myPortfolio
-const isRoutedFromPortfolio =
-  typeof window !== 'undefined' && window.location.pathname.startsWith('/terminalD');
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 
 function App() {
+  // Change routing depending on wether terminalD is being developed individually or within myPortfolio
+  const isRoutedFromPortfolio = useLocation().pathname.startsWith('/terminalD');
+
   return isRoutedFromPortfolio ? (
     <Routes>
       <Route
