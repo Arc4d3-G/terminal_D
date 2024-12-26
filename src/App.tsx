@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 console.log(import.meta.env.VITE_BACKEND_URL);
 function App() {
   return (
-    <BrowserRouter basename='/terminalD'>
+    <BrowserRouter>
       <Routes>
         <Route
           path='/verify'
