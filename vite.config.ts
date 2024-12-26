@@ -7,4 +7,7 @@ export default defineConfig({
   build: {
     outDir: 'dist', // Ensure output is to 'dist'
   },
+  define: {
+    'import.meta.env.VITE_BACKEND_URL': JSON.stringify(process.env.VITE_BACKEND_URL),
+  },
 });
