@@ -4,8 +4,12 @@ import TerminalD from './pages/TerminalD';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 
 function App() {
-  // Change routing depending on wether terminalD is being developed individually or within myPortfolio
-  const isRoutedFromPortfolio = useLocation().pathname.startsWith('/terminalD');
+  return <ConditionalRoutes />;
+}
+
+function ConditionalRoutes() {
+  const location = useLocation();
+  const isRoutedFromPortfolio = location.pathname.startsWith('/terminalD');
 
   return isRoutedFromPortfolio ? (
     <Routes>
