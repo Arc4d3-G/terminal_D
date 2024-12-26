@@ -27,7 +27,7 @@ jobs:
         path: '**/node_modules'
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
 
-    - name: 🔨 Install Dependencies
+    - name: Install Dependencies
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
       run: |
         npm install
@@ -47,4 +47,4 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: /public_html/
+          server-dir: /public_html/terminalD
