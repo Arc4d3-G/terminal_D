@@ -50,5 +50,3 @@ jobs:
     - name: Sync to S3
       run: |
         aws s3 sync ./dist/ s3://terminal.dewaldbreed.co.za --delete
-        # If your project is built into the 'build' directory. Change it to 'dist' or other directories if applicable.
-        # Replace 'your-s3-bucket-name' with your actual bucket name
