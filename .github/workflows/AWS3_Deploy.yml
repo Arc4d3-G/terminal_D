@@ -40,11 +40,15 @@ jobs:
       env:
        VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
         
-    - name: FTP Deploy
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+    - name: Configure AWS CLI
+      uses: aws-actions/configure-aws-credentials@v1
       with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: /public_html/terminalD/
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Sync to S3
+      run: |
+        aws s3 sync ./dist/ s3://terminal.dewaldbreed.oc.za --delete
+        # If your project is built into the 'build' directory. Change it to 'dist' or other directories if applicable.
+        # Replace 'your-s3-bucket-name' with your actual bucket name
