@@ -110,13 +110,11 @@ const HiddenTextAreaInput = styled.textarea`
 `;
 
 // #endregion
-function App() {
-  const introText = './initTerminalD.sh';
-  const introLineHead = 'guest@localMachine:~$';
-  const defaultLineHead = 'guest@terminalD:~$';
+const App: React.FC = () => {
+  const [cwd, setCwd] = useState('~');
   const [isReady, setIsReady] = useState<boolean>(false);
   const [session, setSession] = useState<User | null>(null);
-  const [lineHead, setLineHead] = useState<string>(introLineHead);
+  const [lineHead, setLineHead] = useState<string>('guest@localMachine:~$');
   const [loading, setLoading] = useState<boolean>(false);
   const [themes, setThemes] = useState<Record<string, Theme>>(getPresetThemes());
   const [activeTheme, setActiveTheme] = useState<Theme>(themes['dark']);
@@ -132,6 +130,8 @@ function App() {
   const [inputBuffer, setInputBuffer] = useState<Array<string>>([]);
   const mainInput = useRef<HTMLTextAreaElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
+  const introText = './initTerminalD.sh';
+  const defaultLineHead = `guest@terminalD:${cwd}$`;
 
   // #region State Getters
   const getActiveTheme = () => {
@@ -153,6 +153,10 @@ function App() {
   const getSession = () => {
     return session;
   };
+
+  const getCwd = () => {
+    return cwd;
+  };
   // #endregion
 
   // Create instance of COMMANDS and pass necessary state functions
@@ -170,6 +174,8 @@ function App() {
     setInputBuffer,
     getInputBuffer,
     getSession,
+    setCwd,
+    getCwd,
     defaultLineHead
   );
 
@@ -356,11 +362,11 @@ function App() {
   // Set line header according to session
   useEffect(() => {
     if (session) {
-      setLineHead(`${session.email.split('@')[0]}@terminalD:~$`);
+      setLineHead(`${session.email.split('@')[0]}@terminalD:${cwd}$`);
     } else if (!session && !isIntroTyping) {
       setLineHead(defaultLineHead);
     }
-  }, [session, isIntroTyping]);
+  }, [session, isIntroTyping, defaultLineHead, cwd]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -515,6 +521,6 @@ function App() {
       </Blanket>
     </ThemeProvider>
   );
-}
+};
 
 export default App;

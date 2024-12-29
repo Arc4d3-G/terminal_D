@@ -11,10 +11,9 @@ type Command = {
   execute: (args: string[], options: Record<string, string | boolean>) => string | Promise<string>;
 };
 
-// interface ApiResponse {
-//   data: string | null;
-//   error: string | null;
-// }
+type FileSystemNode =
+  | { type: 'directory'; content: Record<string, FileSystemNode> }
+  | { type: 'file'; content: string };
 
 // #endregion
 
@@ -42,6 +41,8 @@ export const createCommands = (
   setInputBuffer: Dispatch<React.SetStateAction<string[]>>,
   getInputBuffer: () => string[],
   getSession: () => User | null,
+  setCwd: React.Dispatch<React.SetStateAction<string>>,
+  getCwd: () => string,
   defaultLineHead: string
 ): Record<string, Command> => {
   return {
@@ -54,6 +55,113 @@ export const createCommands = (
         return `Welcome to Terminal-D<br>
         Terminal-D started as a way to make my portfolio more interactive and engaging—something beyond a simple GitHub link. I wanted a flexible, creative space to showcase my work and explore my interests, and a terminal emulator felt like the perfect fit.
         It’s versatile, interactive, and a great way to experiment with different programming technologies. With Terminal-D, I can turn my projects into commands, giving others a fun way to explore my work while I continue learning and building.`;
+      },
+    },
+    ['ls']: {
+      description: `Displays the contents of the current directory or a specified directory. It lists files and subdirectories, helping you explore the file system.`,
+      argsAllowed: false,
+      optionsAllowed: false,
+      isListed: true,
+      execute: () => {
+        const cwd = getCwd();
+        const cwdParts = cwd.split('/');
+
+        let path = mockFileSystem['~'];
+        for (const directory of cwdParts) {
+          if (path.type === 'directory' && path.content[directory]) {
+            path = path.content[directory];
+          }
+        }
+
+        return Object.keys(path.content).join(' ');
+      },
+    },
+    ['cd']: {
+      description: `Changes the current working directory to the specified directory. If no directory is specified, it defaults to the home directory (~).`,
+      argsAllowed: true,
+      optionsAllowed: false,
+      isListed: true,
+      execute: (args) => {
+        const targetPath = args[0] || '~';
+
+        // Handle home directory shortcut
+        if (targetPath === '~') {
+          setCwd('~');
+          return '';
+        }
+
+        const cwd = getCwd(); // Current working directory
+
+        // Normalize the path (handles '.', '..', and absolute/relative paths)
+        const normalizePath = (path: string, cwd: string): string => {
+          const parts = path.startsWith('/')
+            ? path.split('/') // Absolute path
+            : (cwd + '/' + path).split('/'); // Relative path
+
+          const stack: string[] = [];
+          for (const part of parts) {
+            if (part === '.' || part === '') continue; // Ignore current directory or empty parts
+            if (part === '..') stack.pop(); // Go up one directory
+            else stack.push(part); // Add to stack
+          }
+
+          return stack.length ? stack.join('/') : '/'; // Return normalized path
+        };
+
+        const resolvedPath = normalizePath(targetPath, cwd);
+        console.log(resolvedPath);
+        // Traverse the mock file system to find the resolved path
+        const traverseFileSystem = (
+          path: string,
+          fileSystem: Record<string, FileSystemNode>
+        ): FileSystemNode | null => {
+          const parts = path.split('/').filter((dir) => dir !== '~'); // Split into parts, ignoring root '/'
+          let current: FileSystemNode | null = fileSystem['~']; // Start from root
+
+          for (const part of parts) {
+            if (current?.type === 'directory' && current.content[part]) {
+              current = current.content[part];
+            } else {
+              return null; // Path doesn't exist
+            }
+          }
+
+          return current;
+        };
+
+        const dir = traverseFileSystem(resolvedPath, mockFileSystem);
+
+        if (dir && dir.type === 'directory') {
+          setCwd(resolvedPath);
+          return '';
+        } else if (dir && dir.type === 'file') {
+          return `${targetPath}: Not a directory`;
+        } else {
+          return `${targetPath}: No such file or directory exists`;
+        }
+      },
+    },
+    ['cat']: {
+      description: 'Display the content of a file',
+      argsAllowed: true,
+      optionsAllowed: false,
+      isListed: true,
+      execute: (args: string[]) => {
+        const targetFile = args[0];
+        if (!targetFile) {
+          return 'Usage: cat [filename]';
+        }
+
+        const cwd = getCwd(); // Get current directory
+        const currentDir = mockFileSystem[cwd]?.content as Record<string, FileSystemNode>;
+
+        if (currentDir[targetFile] && currentDir[targetFile].type === 'file') {
+          return currentDir[targetFile].content; // Return file content
+        } else if (currentDir[targetFile]) {
+          return `${targetFile}: Is a directory`;
+        } else {
+          return `${targetFile}: No such file exists`;
+        }
       },
     },
     ['theme']: {
@@ -94,7 +202,7 @@ export const createCommands = (
     },
     ['login']: {
       description: `Login with email and provide your password when prompted.<br>
-        Example: login -u yourEmailAddress.`,
+        Example: login -u your@emailAddress.com`,
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
@@ -127,7 +235,7 @@ export const createCommands = (
             setIsPrompting
           );
         } else {
-          return 'To Login, please provide your email (i.e., login -u youremail@mail.com) and when prompted, provide your password.';
+          return 'To Login, please provide your email (i.e., login -u your@emailAddress.com) and when prompted, provide your password.';
         }
       },
     },
@@ -183,7 +291,7 @@ export const createCommands = (
             setIsPrompting
           );
         } else {
-          return 'To Register, please provide your email (i.e., Register -u youremail@mail.com) and when prompted, provide your password.';
+          return 'To Register, please provide your email (i.e., Register -u your@emailAddress.com ) and when prompted, provide your password.';
         }
       },
     },
@@ -206,6 +314,18 @@ export const createCommands = (
 };
 
 // #region Misc command functions
+
+const mockFileSystem: Record<string, FileSystemNode> = {
+  '~': {
+    type: 'directory',
+    content: {
+      skills: { type: 'directory', content: {} },
+      projects: { type: 'directory', content: {} },
+      contact: { type: 'file', content: 'You can contact me at: dewaldbreed@gmail.com' },
+      resume: { type: 'file', content: 'coming soon' },
+    },
+  },
+};
 
 const getDate = (dateString: string | null = null) => {
   let date = new Date();
