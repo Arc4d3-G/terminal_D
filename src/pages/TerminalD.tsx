@@ -62,7 +62,7 @@ const Main = styled.div`
 
 const Lines = styled.div`
   word-wrap: break-word;
-  word-break: break-all;
+  word-break: break-word;
 `;
 
 const Line = styled.div``;
