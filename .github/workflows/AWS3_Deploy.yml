@@ -25,7 +25,8 @@ jobs:
       id: cache-node-modules
       with:
         path: '**/node_modules'
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+
 
     - name: Install Dependencies
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
