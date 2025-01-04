@@ -50,3 +50,7 @@ jobs:
     - name: Sync to S3
       run: |
         aws s3 sync ./dist/ s3://terminal.dewaldbreed.co.za --delete
+
+    - name: Print VITE_FRONTEND_URL
+      run: echo "VITE_FRONTEND_URL is $VITE_FRONTEND_URL"
+
