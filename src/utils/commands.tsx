@@ -92,42 +92,8 @@ export const createCommands = (
 
         const cwd = getCwd(); // Current working directory
 
-        // Normalize the path (handles '.', '..', and absolute/relative paths)
-        const normalizePath = (path: string, cwd: string): string => {
-          const parts = path.startsWith('/')
-            ? path.split('/') // Absolute path
-            : (cwd + '/' + path).split('/'); // Relative path
-
-          const stack: string[] = [];
-          for (const part of parts) {
-            if (part === '.' || part === '') continue; // Ignore current directory or empty parts
-            if (part === '..') stack.pop(); // Go up one directory
-            else stack.push(part); // Add to stack
-          }
-
-          return stack.length ? stack.join('/') : '/'; // Return normalized path
-        };
-
         const resolvedPath = normalizePath(targetPath, cwd);
         console.log(resolvedPath);
-        // Traverse the mock file system to find the resolved path
-        const traverseFileSystem = (
-          path: string,
-          fileSystem: Record<string, FileSystemNode>
-        ): FileSystemNode | null => {
-          const parts = path.split('/').filter((dir) => dir !== '~'); // Split into parts, ignoring root '/'
-          let current: FileSystemNode | null = fileSystem['~']; // Start from root
-
-          for (const part of parts) {
-            if (current?.type === 'directory' && current.content[part]) {
-              current = current.content[part];
-            } else {
-              return null; // Path doesn't exist
-            }
-          }
-
-          return current;
-        };
 
         const dir = traverseFileSystem(resolvedPath, mockFileSystem);
 
@@ -153,11 +119,14 @@ export const createCommands = (
         }
 
         const cwd = getCwd(); // Get current directory
-        const currentDir = mockFileSystem[cwd]?.content as Record<string, FileSystemNode>;
+        const resolvedPath = normalizePath(targetFile, cwd);
+        console.log(resolvedPath);
 
-        if (currentDir[targetFile] && currentDir[targetFile].type === 'file') {
-          return currentDir[targetFile].content; // Return file content
-        } else if (currentDir[targetFile]) {
+        const dir = traverseFileSystem(resolvedPath, mockFileSystem);
+        console.log({ cwd: cwd, currdir: dir });
+        if (dir && dir.type === 'file') {
+          return dir.content; // Return file content
+        } else if (dir && dir.type === 'directory') {
           return `${targetFile}: Is a directory`;
         } else {
           return `${targetFile}: No such file exists`;
@@ -320,8 +289,47 @@ const mockFileSystem: Record<string, FileSystemNode> = {
     type: 'directory',
     content: {
       skills: { type: 'directory', content: {} },
-      projects: { type: 'directory', content: {} },
-      contact: { type: 'file', content: 'You can contact me at: dewaldbreed@gmail.com' },
+      projects: {
+        type: 'directory',
+        content: {
+          react_dbc: {
+            type: 'file',
+            content:
+              'My first react project, a digital business card.<br>Link: <a href="https://dbc.dewaldbreed.co.za/">https://dbc.dewaldbreed.co.za/</a>',
+          },
+          js_metronome: {
+            type: 'file',
+            content:
+              'A vanilla javascript musical metronome.<br>Link: <a href="https://metronome.dewaldbreed.co.za/">https://metronome.dewaldbreed.co.za/</a>',
+          },
+          react_podstream: {
+            type: 'file',
+            content:
+              'My first larger scale react app, a podcast streaming site using a mock data api. Link: <a href="https://pod-stream.netlify.app/">https://pod-stream.netlify.app/</a>',
+          },
+        },
+      },
+      contact: {
+        type: 'directory',
+        content: {
+          email: { type: 'file', content: 'You can contact me at: dewaldbreed@gmail.com' },
+          github: {
+            type: 'file',
+            content:
+              '<a href="https://github.com/Arc4d3-G" target="_blank">https://github.com/Arc4d3-G</a>',
+          },
+          linkedin: {
+            type: 'file',
+            content:
+              '<a href="https://www.linkedin.com/in/dewald-breed-a2297a272/" target="_blank">https://www.linkedin.com/in/dewald-breed-a2297a272/</a>',
+          },
+          website: {
+            type: 'file',
+            content:
+              '<a href="https://dewaldbreed.co.za" target="_blank">https://dewaldbreed.co.za</a>',
+          },
+        },
+      },
       resume: { type: 'file', content: 'coming soon' },
     },
   },
@@ -478,5 +486,40 @@ const handleTheme = (
       }
     }
   }
+};
+
+// Normalize the path (handles '.', '..', and absolute/relative paths)
+const normalizePath = (path: string, cwd: string): string => {
+  const parts = path.startsWith('/')
+    ? path.split('/') // Absolute path
+    : (cwd + '/' + path).split('/'); // Relative path
+
+  const stack: string[] = [];
+  for (const part of parts) {
+    if (part === '.' || part === '') continue; // Ignore current directory or empty parts
+    if (part === '..') stack.pop(); // Go up one directory
+    else stack.push(part); // Add to stack
+  }
+
+  return stack.length ? stack.join('/') : '/'; // Return normalized path
+};
+
+// Traverse the mock file system to find the resolved path
+const traverseFileSystem = (
+  path: string,
+  fileSystem: Record<string, FileSystemNode>
+): FileSystemNode | null => {
+  const parts = path.split('/').filter((dir) => dir !== '~'); // Split into parts, ignoring root '/'
+  let current: FileSystemNode | null = fileSystem['~']; // Start from root
+
+  for (const part of parts) {
+    if (current?.type === 'directory' && current.content[part]) {
+      current = current.content[part];
+    } else {
+      return null; // Path doesn't exist
+    }
+  }
+
+  return current;
 };
 // #endregion

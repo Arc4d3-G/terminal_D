@@ -288,7 +288,6 @@ const App: React.FC = () => {
       }
     });
     console.log({ command, args, options });
-    console.log(inputBuffer);
     return { command, args, options };
   };
 
