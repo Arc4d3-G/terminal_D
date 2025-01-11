@@ -4,7 +4,6 @@ export type User = {
 };
 
 const apiUrl = import.meta.env.VITE_BACKEND_URL;
-console.log(apiUrl);
 
 export const registerUser = async (
   email: string,

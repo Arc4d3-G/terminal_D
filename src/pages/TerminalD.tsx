@@ -4,6 +4,7 @@ import { getPresetThemes, Theme } from '../utils/themes';
 import { createCommands, HEADER, simulateAsync } from '../utils/commands';
 import FontFaceObserver from 'fontfaceobserver';
 import { fetchUserData, User } from '../utils/auth';
+// import LineHead from '../components/LineHead';
 
 // #region Type Declarations
 type ParsedInput = {
@@ -320,7 +321,7 @@ const App: React.FC = () => {
       const response: string[] = [];
       Object.entries(COMMANDS).forEach(([key, value]) => {
         if (!value.isListed) return;
-        response.push(key.toUpperCase(), value.description, '<br>');
+        response.push(`${key.toUpperCase()} - ${value.description}`);
       });
 
       setLineHistory((prevHistory) => [...prevHistory, newLine, '<br>', ...response, '<br>']);

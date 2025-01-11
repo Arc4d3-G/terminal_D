@@ -134,7 +134,8 @@ export const createCommands = (
       },
     },
     ['theme']: {
-      description: 'Change the theme to a preset scheme, or create your own.',
+      description:
+        'Change the theme to a preset scheme, or create your own. Args: -bg, -text, -primary (optional), -secondary (optional).',
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
@@ -170,8 +171,7 @@ export const createCommands = (
       },
     },
     ['login']: {
-      description: `Login with email and provide your password when prompted.<br>
-        Example: login -u your@emailAddress.com`,
+      description: `Login with email and provide your password when prompted. Example: login -u your@emailAddress.com`,
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
@@ -209,8 +209,7 @@ export const createCommands = (
       },
     },
     ['register']: {
-      description: `Register with email and provide your password when prompted.<br>
-        Example: register -u yourEmailAddress.`,
+      description: `Register with email and provide your password when prompted. Example: register -u yourEmailAddress.`,
       argsAllowed: true,
       optionsAllowed: false,
       isListed: true,
@@ -260,7 +259,7 @@ export const createCommands = (
             setIsPrompting
           );
         } else {
-          return 'To Register, please provide your email (i.e., Register -u your@emailAddress.com ) and when prompted, provide your password.';
+          return 'To Register, please provide your email (i.e., register -u your@emailAddress.com ) and when prompted, provide your password.';
         }
       },
     },
@@ -330,7 +329,7 @@ const mockFileSystem: Record<string, FileSystemNode> = {
           },
         },
       },
-      resume: { type: 'file', content: 'coming soon' },
+      // resume: { type: 'file', content: 'coming soon' },
     },
   },
 };
@@ -394,7 +393,7 @@ const handleAuth = async (
 
         return data ? data : 'Something went wrong.';
       } else {
-        return 'To Register, please provide your email (i.e., Register -u youremail@mail.com) and when prompted, provide your password.';
+        return 'To Register, please provide your email (i.e., register -u youremail@mail.com) and when prompted, provide your password.';
       }
     } else {
       // LOGIN
@@ -407,8 +406,6 @@ const handleAuth = async (
 
         if (data) {
           setSession(data);
-          // const username = data.email.split('@')[0];
-          // setLineHead(`${username}@terminalD:~$`);
           return `Login successful! Welcome back, ${username}.`;
         } else {
           return 'Something went wrong.';
@@ -445,11 +442,14 @@ const handleTheme = (
     const name: string = args[1]?.toLowerCase();
     const bgColor = options['-bg'] as string | undefined;
     const textColor = options['-text'] as string | undefined;
+    const primary = options['-primary'] as string | undefined;
+    const secondary = options['-secondary'] as string | undefined;
 
     if (bgColor && textColor) {
       const newTheme: Theme = {
         bg: bgColor,
-        primary: textColor,
+        primary: primary ? primary : textColor,
+        secondary: secondary ? secondary : textColor,
         font: textColor,
       };
       setThemes((prev) => ({ ...prev, [name]: newTheme }));
@@ -457,8 +457,7 @@ const handleTheme = (
       return `New theme "${name}" has been successfully created.`;
     } else {
       return `
-      Please provide a valid colors string (i.e. blue, black, azure ect.)<br>
-      Example: theme new "themeName" -bg="backgroundColorName" -text="textColorName"`;
+      Please provide a valid colors string (i.e. blue, black, azure ect.). Example: theme new "themeName" -bg="backgroundColorName" -text="textColorName"`;
     }
   } else {
     // select preset
@@ -467,12 +466,13 @@ const handleTheme = (
     const allThemes = getThemes();
     const themeArg = args[0]?.toLowerCase();
 
-    // if (options['-l']) return Object.keys(allThemes).map((key) => key);
+    if (options['-l'])
+      return Object.keys(allThemes)
+        .map((key) => key)
+        .join(' ');
 
     if (!themeArg || themeArg.trim() === '')
-      return `Please provide a valid theme name, or use the "new" keyword to create a new theme.<br>
-        Example: theme new -bg="backgroundColor" -text="fontColor"
-      `;
+      return `Please provide a valid theme name, or use the "new" keyword to create a new theme. Example: theme new -bg="backgroundColor" -text="fontColor"`;
 
     const validTheme = allThemes[themeArg];
     if (validTheme && validTheme !== activeTheme) {
