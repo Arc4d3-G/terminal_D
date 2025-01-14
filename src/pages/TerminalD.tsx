@@ -4,13 +4,20 @@ import { getPresetThemes, Theme } from '../utils/themes';
 import { createCommands, HEADER, simulateAsync } from '../utils/commands';
 import FontFaceObserver from 'fontfaceobserver';
 import { fetchUserData, User } from '../utils/auth';
-// import LineHead from '../components/LineHead';
+import LineHead from '../components/LineHead';
+import LineHistory, { Line } from '../components/LineHistory';
 
 // #region Type Declarations
 type ParsedInput = {
   command: string | undefined;
   args: string[];
   options: Record<string, string | boolean>;
+};
+
+export type Prompt = {
+  for: string;
+  content: string;
+  step: string;
 };
 // #endregion
 
@@ -61,12 +68,7 @@ const Main = styled.div`
   padding: 1ch;
 `;
 
-const Lines = styled.div`
-  word-wrap: break-word;
-  word-break: break-word;
-`;
-
-const Line = styled.div``;
+const LineDiv = styled.div``;
 
 const Prompt = styled.div``;
 
@@ -115,26 +117,25 @@ const App: React.FC = () => {
   const [cwd, setCwd] = useState('~');
   const [isReady, setIsReady] = useState<boolean>(false);
   const [session, setSession] = useState<User | null>(null);
-  const [lineHead, setLineHead] = useState<string>('guest@localMachine:~$');
+  const [nameSpace, setNameSpace] = useState<string>('localMachine');
   const [loading, setLoading] = useState<boolean>(false);
   const [themes, setThemes] = useState<Record<string, Theme>>(getPresetThemes());
   const [activeTheme, setActiveTheme] = useState<Theme>(themes['dark']);
   const [inputValue, setInputValue] = useState('');
   const [caretPosition, setCaretPosition] = useState(0);
-  const [lineHistory, setLineHistory] = useState<Array<string>>([]);
+  const [lineHistory, setLineHistory] = useState<Array<Line>>([]);
   const [commandHistory, setCommandHistory] = useState<Array<string>>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const [isIntroTyping, setIsIntroTyping] = useState<boolean>(true);
   const [isCaretMoving, setIsCaretMoving] = useState(false);
   const [inputDisabled, setInputDisabled] = useState<boolean>(true);
-  const [isPrompting, setIsPrompting] = useState<string | null>(null);
+  const [isPrompting, setIsPrompting] = useState<Prompt | null>(null);
   const [inputBuffer, setInputBuffer] = useState<Array<string>>([]);
   const mainInput = useRef<HTMLTextAreaElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
   const introText = './initTerminalD.sh';
-  const defaultLineHead = `guest@terminalD:${cwd}$`;
 
-  // #region State Getters
+  // #region State Getters & util
   const getActiveTheme = () => {
     return activeTheme;
   };
@@ -158,6 +159,21 @@ const App: React.FC = () => {
   const getCwd = () => {
     return cwd;
   };
+
+  const createLine = (inputValue: string, includesHeader: boolean = true): Line => {
+    let lineHead = null;
+    if (includesHeader) {
+      lineHead = {
+        username: session ? session.username : 'guest',
+        nameSpace: nameSpace,
+        cwd: cwd,
+      };
+    }
+    return {
+      header: lineHead,
+      content: inputValue,
+    };
+  };
   // #endregion
 
   // Create instance of COMMANDS and pass necessary state functions
@@ -169,18 +185,16 @@ const App: React.FC = () => {
     setLoading,
     setLineHistory,
     setSession,
-    setLineHead,
     setIsPrompting,
     getIsPrompting,
     setInputBuffer,
     getInputBuffer,
     getSession,
     setCwd,
-    getCwd,
-    defaultLineHead
+    getCwd
   );
 
-  // #region Caret Logic functions
+  // #region Caret Logic
   const updateCaretPosition = () => {
     const position = mainInput.current?.selectionStart || 0;
     setCaretPosition(position);
@@ -201,7 +215,6 @@ const App: React.FC = () => {
   // #endregion
 
   // #region Input & Event handlers
-
   const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(event.target.value);
     updateCaretPosition();
@@ -292,18 +305,21 @@ const App: React.FC = () => {
     return { command, args, options };
   };
 
+  // Handle input and return response
   const getResponse = async (inputValue: string) => {
-    const newLine = `${lineHead} ${inputValue}`;
+    const newLine = createLine(inputValue);
+    console.log(lineHistory);
+    const newLineNoHeader = createLine(inputValue, false);
     const { command, args, options } = parseInput(inputValue);
 
     if (isPrompting) {
-      executeCommand(isPrompting, [inputValue], {}, newLine);
+      executeCommand(isPrompting.for, [inputValue], {}, newLine);
       return;
     }
 
     // If no command is entered, echo the input
     if (!command) {
-      setLineHistory((prevHistory) => [...prevHistory, newLine, inputValue]);
+      setLineHistory((prevHistory) => [...prevHistory, newLine, newLineNoHeader]);
       return;
     }
 
@@ -317,56 +333,43 @@ const App: React.FC = () => {
       handleUnsupportedCommand(newLine, inputValue);
     }
 
-    function displayHelp(newLine: string) {
-      const response: string[] = [];
+    function displayHelp(newLine: Line) {
+      const response: Line[] = [];
       Object.entries(COMMANDS).forEach(([key, value]) => {
         if (!value.isListed) return;
-        response.push(`${key.toUpperCase()} - ${value.description}`);
+        response.push(createLine(`${key.toUpperCase()} - ${value.description}`, false));
       });
 
-      setLineHistory((prevHistory) => [...prevHistory, newLine, '<br>', ...response, '<br>']);
+      setLineHistory((prevHistory) => [...prevHistory, newLine, ...response]);
     }
 
     async function executeCommand(
       command: string,
       args: string[],
       options: Record<string, string | boolean>,
-      newLine: string
+      newLine: Line
     ) {
       const cmd = COMMANDS[command];
       setLineHistory((prevHistory) => [...prevHistory, newLine]);
 
       const response = await cmd.execute(args, options);
 
-      if (response) {
-        setLineHistory((prevHistory) =>
-          typeof response === 'string'
-            ? [...prevHistory, '<br>', response, '<br>']
-            : [...prevHistory, '<br>', ...response, '<br>']
-        );
-      }
+      setLineHistory((prevHistory) => [...prevHistory, createLine(response, false)]);
     }
 
-    function handleUnsupportedCommand(newLine: string, inputValue: string) {
-      const response =
+    function handleUnsupportedCommand(newLine: Line, inputValue: string) {
+      const response = createLine(
         inputValue.trim() === ''
           ? '' // Empty input
-          : `Unsupported Command: ${inputValue}`;
+          : `Unsupported Command: ${inputValue}`,
+        false
+      );
       setLineHistory((prevHistory) => [...prevHistory, newLine, response]);
     }
   };
   // #endregion
 
   // #region UseEffects
-
-  // Set line header according to session
-  useEffect(() => {
-    if (session) {
-      setLineHead(`${session.email.split('@')[0]}@terminalD:${cwd}$`);
-    } else if (!session && !isIntroTyping) {
-      setLineHead(defaultLineHead);
-    }
-  }, [session, isIntroTyping, defaultLineHead, cwd]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -393,11 +396,11 @@ const App: React.FC = () => {
 
     const displayIntroMessages = async () => {
       const messages = [
-        `${lineHead} ${introText}`,
-        '[INFO] Initializing Terminal-D...',
-        '[INFO] Loading environment variables...',
-        '[INFO] Setting up system paths...',
-        '[INFO] Terminal-D initialized successfully.',
+        { content: introText, header: { username: 'guest', nameSpace: 'LocalMachine', cwd: '~' } },
+        { content: '[INFO] Initializing Terminal-D...', header: null },
+        { content: '[INFO] Loading environment variables...', header: null },
+        { content: '[INFO] Setting up system paths...', header: null },
+        { content: '[INFO] Terminal-D initialized successfully.', header: null },
       ];
 
       for (const message of messages) {
@@ -407,16 +410,22 @@ const App: React.FC = () => {
 
       setLineHistory((prevHistory) => [
         ...prevHistory,
-        HEADER,
-        `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
+        { header: null, content: HEADER },
+        {
+          header: null,
+          content: `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
+        },
       ]);
       finalizeIntro();
     };
 
     const handleReturningUser = () => {
       setLineHistory([
-        HEADER,
-        `Welcome back to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
+        { header: null, content: HEADER },
+        {
+          header: null,
+          content: `Welcome back to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
+        },
       ]);
       finalizeIntro();
     };
@@ -432,6 +441,7 @@ const App: React.FC = () => {
     };
 
     const finalizeIntro = () => {
+      setNameSpace('terminalD');
       setIsIntroTyping(false);
       setIsCaretMoving(false);
       setInputDisabled(false);
@@ -448,7 +458,7 @@ const App: React.FC = () => {
     } else {
       return handleTypingAnimation();
     }
-  }, [inputValue, isIntroTyping, lineHead, session, isReady, introText, defaultLineHead]);
+  }, [inputValue, isIntroTyping, session, isReady, introText]);
 
   // Load resources, hiding the main app until it's ready
   useEffect(() => {
@@ -491,19 +501,20 @@ const App: React.FC = () => {
       <GlobalStyle />
       <Blanket onClick={setFocus}>
         <Main style={{ fontFamily: 'UbuntuMono' }}>
-          <Lines>
-            {lineHistory.map((line, index) => (
-              <Line
-                key={index}
-                data-key={index}
-                dangerouslySetInnerHTML={{ __html: line }}
-              />
-            ))}
-          </Lines>
-          {loading && !isIntroTyping && <Line>Loading...</Line>}
+          <LineHistory
+            lineHistory={lineHistory}
+            activeTheme={activeTheme}
+          />
+          {loading && !isIntroTyping && <LineDiv>Loading...</LineDiv>}
           <Prompt ref={promptRef}>
             <PromptPre>
-              <span>{lineHead} </span>
+              <LineHead
+                username={session?.username}
+                cwd={cwd}
+                activeTheme={activeTheme}
+                nameSpace={nameSpace}
+                isPrompting={isPrompting}
+              />
               {renderInputWithCaret()}
             </PromptPre>
             <HiddenTextAreaInput

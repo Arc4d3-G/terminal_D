@@ -1,6 +1,8 @@
 import { Dispatch, SetStateAction } from 'react';
 import { Theme } from './themes.tsx';
 import { loginUser, registerUser, User } from './auth.ts';
+import { Line } from '../components/LineHistory.tsx';
+import { Prompt } from '../pages/TerminalD.tsx';
 
 // #region Type Declarations
 type Command = {
@@ -33,17 +35,15 @@ export const createCommands = (
   setThemes: Dispatch<SetStateAction<Record<string, Theme>>>,
   getThemes: () => Record<string, Theme>,
   setLoading: Dispatch<SetStateAction<boolean>>,
-  setLineHistory: Dispatch<SetStateAction<string[]>>,
+  setLineHistory: Dispatch<SetStateAction<Line[]>>,
   setSession: Dispatch<SetStateAction<User | null>>,
-  setLineHead: Dispatch<React.SetStateAction<string>>,
-  setIsPrompting: React.Dispatch<React.SetStateAction<string | null>>,
-  getIsPrompting: () => string | null,
+  setIsPrompting: React.Dispatch<React.SetStateAction<Prompt | null>>,
+  getIsPrompting: () => Prompt | null,
   setInputBuffer: Dispatch<React.SetStateAction<string[]>>,
   getInputBuffer: () => string[],
   getSession: () => User | null,
   setCwd: React.Dispatch<React.SetStateAction<string>>,
-  getCwd: () => string,
-  defaultLineHead: string
+  getCwd: () => string
 ): Record<string, Command> => {
   return {
     ['about']: {
@@ -52,9 +52,9 @@ export const createCommands = (
       optionsAllowed: false,
       isListed: false,
       execute: () => {
-        return `Welcome to Terminal-D<br>
+        return `<br>Welcome to Terminal-D<br>
         Terminal-D started as a way to make my portfolio more interactive and engaging—something beyond a simple GitHub link. I wanted a flexible, creative space to showcase my work and explore my interests, and a terminal emulator felt like the perfect fit.
-        It’s versatile, interactive, and a great way to experiment with different programming technologies. With Terminal-D, I can turn my projects into commands, giving others a fun way to explore my work while I continue learning and building.`;
+        It’s versatile, interactive, and a great way to experiment with different programming technologies. With Terminal-D, I can turn my projects into commands, giving others a fun way to explore my work while I continue learning and building.<br><br>`;
       },
     },
     ['ls']: {
@@ -91,10 +91,7 @@ export const createCommands = (
         }
 
         const cwd = getCwd(); // Current working directory
-
         const resolvedPath = normalizePath(targetPath, cwd);
-        console.log(resolvedPath);
-
         const dir = traverseFileSystem(resolvedPath, mockFileSystem);
 
         if (dir && dir.type === 'directory') {
@@ -114,16 +111,15 @@ export const createCommands = (
       isListed: true,
       execute: (args: string[]) => {
         const targetFile = args[0];
+
         if (!targetFile) {
           return 'Usage: cat [filename]';
         }
 
         const cwd = getCwd(); // Get current directory
         const resolvedPath = normalizePath(targetFile, cwd);
-        console.log(resolvedPath);
-
         const dir = traverseFileSystem(resolvedPath, mockFileSystem);
-        console.log({ cwd: cwd, currdir: dir });
+
         if (dir && dir.type === 'file') {
           return dir.content; // Return file content
         } else if (dir && dir.type === 'directory') {
@@ -150,8 +146,11 @@ export const createCommands = (
       isListed: true,
       execute: () => {
         setLineHistory([
-          HEADER,
-          `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
+          { header: null, content: HEADER },
+          {
+            header: null,
+            content: `Welcome to Terminal-D!<br>Type \`help\` to get started or \`about\` to learn more about Terminal-D.<br><br>`,
+          },
         ]);
         return '';
       },
@@ -184,15 +183,13 @@ export const createCommands = (
 
         if (usernameOption && username) {
           //prompt for password
-          setIsPrompting('login');
+          setIsPrompting({ for: 'login', step: 'login_pass_1', content: 'Enter Your Password' });
           setInputBuffer([username]);
-          setLineHead('Password:');
           return '';
-        } else if (isPrompting && isPrompting === 'login') {
+        } else if (isPrompting && isPrompting.step === 'login_pass_1') {
           // attempt to login in with credentials
           const bufferUsername = getInputBuffer()[0];
           const password = args[0];
-          setLineHead(defaultLineHead);
 
           return handleAuth(
             bufferUsername,
@@ -219,23 +216,29 @@ export const createCommands = (
         const usernameOption = options['-u'];
         const username = args[0]?.toLocaleLowerCase();
         const isPrompting = getIsPrompting();
-        const inputBuffer = getInputBuffer();
 
         if (usernameOption && username) {
           //prompt for password
 
-          setIsPrompting('register');
+          setIsPrompting({
+            for: 'register',
+            step: 'register_pass_1',
+            content: 'Enter Your Password',
+          });
           setInputBuffer([username]);
-          setLineHead('Enter your password:');
-          return '';
-        } else if (isPrompting === 'register' && inputBuffer.length == 1) {
+          return 'Password must be 8 characters.';
+        } else if (isPrompting?.step === 'register_pass_1') {
           // confirm password
 
           const firstPassword = args[0];
           setInputBuffer((prev) => [...prev, firstPassword]);
-          setLineHead('Confirm your password:');
+          setIsPrompting({
+            for: 'register',
+            step: 'register_pass_2',
+            content: 'Confirm Your Password',
+          });
           return '';
-        } else if (isPrompting === 'register' && inputBuffer.length == 2) {
+        } else if (isPrompting?.step === 'register_pass_2') {
           // attempt to login in with credentials
 
           const [bufferUsername, firstPass] = getInputBuffer();
@@ -243,11 +246,13 @@ export const createCommands = (
 
           if (firstPass !== secondPass) {
             setInputBuffer([bufferUsername]); // Send back to previous step
-            setLineHead('Enter your password:');
+            setIsPrompting({
+              for: 'register',
+              step: 'register_pass_1',
+              content: 'Enter Your Password',
+            });
             return 'Passwords do not match. Please try again';
           }
-
-          setLineHead(defaultLineHead);
 
           return handleAuth(
             bufferUsername,
@@ -377,7 +382,7 @@ const handleAuth = async (
   setLoading: Dispatch<SetStateAction<boolean>>,
   setSession: Dispatch<SetStateAction<User | null>>,
   setInputBuffer: Dispatch<SetStateAction<string[]>>,
-  setIsPrompting: Dispatch<SetStateAction<string | null>>
+  setIsPrompting: Dispatch<SetStateAction<Prompt | null>>
 ) => {
   setLoading(true);
 

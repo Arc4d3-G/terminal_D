@@ -1,6 +1,7 @@
 export type User = {
   email: string;
   id: string;
+  username: string;
 };
 
 const apiUrl = import.meta.env.VITE_BACKEND_URL;
@@ -57,7 +58,10 @@ export const loginUser = async (
 
     if (response.ok) {
       localStorage.setItem('token', data.token);
-      return { data: { id: data.id, email: data.email }, error: null };
+      return {
+        data: { id: data.id, email: data.email, username: data.email.split('@')[0] },
+        error: null,
+      };
     } else {
       return { data: null, error: data.message || 'Failed to log in' };
     }
@@ -87,7 +91,8 @@ export const fetchUserData = async (
       return { data: null, error: data.message || 'Failed to fetch user data' };
     }
 
-    return { data, error: null };
+    const session: User = { username: data.email.split('@')[0], email: data.email, id: data.id };
+    return { data: session, error: null };
   } catch (error) {
     console.error('Error fetching user data:', error);
     return {

@@ -8,7 +8,7 @@ export type Theme = {
 export const getPresetThemes = (): Record<string, Theme> => {
   return {
     ['dark']: {
-      bg: '#242424',
+      bg: '#333333',
       primary: '#4E9A06',
       secondary: '#3465A4',
       font: '#ffffffde',
