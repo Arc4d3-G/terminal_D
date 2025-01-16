@@ -183,7 +183,7 @@ export const createCommands = (
 
         if (usernameOption && username) {
           //prompt for password
-          setIsPrompting({ for: 'login', step: 'login_pass_1', content: 'Enter Your Password' });
+          setIsPrompting({ for: 'login', step: 'login_pass_1', content: 'PASSWORD' });
           setInputBuffer([username]);
           return '';
         } else if (isPrompting && isPrompting.step === 'login_pass_1') {

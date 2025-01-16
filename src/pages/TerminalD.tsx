@@ -201,8 +201,13 @@ const App: React.FC = () => {
   };
 
   const renderInputWithCaret = () => {
-    const beforeCaret = inputValue.slice(0, caretPosition);
-    const afterCaret = inputValue.slice(caretPosition);
+    let input = inputValue;
+    if (isPrompting?.step.includes('pass')) {
+      input = input.replace(/./g, '*');
+    }
+
+    const beforeCaret = input.slice(0, caretPosition);
+    const afterCaret = input.slice(caretPosition);
 
     return (
       <>
@@ -350,7 +355,7 @@ const App: React.FC = () => {
       newLine: Line
     ) {
       const cmd = COMMANDS[command];
-      setLineHistory((prevHistory) => [...prevHistory, newLine]);
+      if (!isPrompting) setLineHistory((prevHistory) => [...prevHistory, newLine]);
 
       const response = await cmd.execute(args, options);
 
