@@ -22,15 +22,25 @@ export const registerUser = async (
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
+    const responseBody = await response.json();
 
-    if (!response.ok) {
-      return { data: null, error: data.message || 'Failed to register' };
+    // Check for unsuccessful response
+    if (!response.ok || !responseBody.success) {
+      return {
+        data: null,
+        error: responseBody.error?.message || 'Failed to register',
+      };
     }
 
-    return { data: data.message, error: null };
+    // Return success message
+    return {
+      data: responseBody.data?.message || 'Registration successful.',
+      error: null,
+    };
   } catch (error) {
     console.error('Registration error:', error);
+
+    // Handle unexpected errors
     return {
       data: null,
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -54,19 +64,30 @@ export const loginUser = async (
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
+    const responseBody = await response.json();
 
-    if (response.ok) {
-      localStorage.setItem('token', data.token);
+    // Check for unsuccessful response
+    if (!response.ok || !responseBody.success) {
       return {
-        data: { id: data.id, email: data.email, username: data.email.split('@')[0] },
-        error: null,
+        data: null,
+        error: responseBody.error?.message || 'Failed to log in',
       };
-    } else {
-      return { data: null, error: data.message || 'Failed to log in' };
     }
+
+    // On success, save token and return user data
+    localStorage.setItem('token', responseBody.data.token);
+    return {
+      data: {
+        id: responseBody.data.id,
+        email: responseBody.data.email,
+        username: responseBody.data.email.split('@')[0],
+      },
+      error: null,
+    };
   } catch (error) {
     console.error('Login error:', error);
+
+    // Handle unexpected errors
     return {
       data: null,
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -85,16 +106,28 @@ export const fetchUserData = async (
       },
     });
 
-    const data = await response.json();
+    const responseBody = await response.json();
 
-    if (!response.ok) {
-      return { data: null, error: data.message || 'Failed to fetch user data' };
+    // Check for unsuccessful response
+    if (!response.ok || !responseBody.success) {
+      return {
+        data: null,
+        error: responseBody.error?.message || 'Failed to fetch user data',
+      };
     }
 
-    const session: User = { username: data.email.split('@')[0], email: data.email, id: data.id };
+    // Map response data to User object
+    const session: User = {
+      username: responseBody.data.email.split('@')[0],
+      email: responseBody.data.email,
+      id: responseBody.data.id,
+    };
+
     return { data: session, error: null };
   } catch (error) {
     console.error('Error fetching user data:', error);
+
+    // Handle unexpected errors
     return {
       data: null,
       error: error instanceof Error ? error.message : 'An unexpected error occurred',

@@ -472,10 +472,12 @@ const App: React.FC = () => {
 
       if (token) {
         // get user data using token via api
-        const { data } = await fetchUserData(token);
+        const { data, error } = await fetchUserData(token);
 
         if (data) {
           setSession(data);
+        } else if (error) {
+          console.log(error);
         }
       }
     };

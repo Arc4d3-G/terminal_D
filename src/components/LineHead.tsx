@@ -16,9 +16,9 @@ const LineHeadContainer = styled.span`
   /* font-weight: bold; */
 `;
 
-const Part = styled.span<{ color?: string; bold?: boolean }>`
+const Part = styled.span<{ color?: string; $bold?: string }>`
   color: ${({ color }) => color || 'inherit'};
-  font-weight: ${({ bold }) => (bold ? 'bold' : 'inherit')};
+  font-weight: ${({ $bold }) => ($bold === 'true' ? 'bold' : 'inherit')};
 `;
 
 const LineHead: React.FC<LineHeadProps> = ({
@@ -35,7 +35,7 @@ const LineHead: React.FC<LineHeadProps> = ({
   return (
     <LineHeadContainer>
       <Part
-        bold={true}
+        $bold={'true'}
         color={activeTheme.primary}
       >
         {username}@{nameSpace}
