@@ -1,6 +1,6 @@
 # Terminal-D
 
-Welcome to Terminal-D!
+Welcome to [Terminal-D](terminal.dewaldbreed.co.za)!
 
 ![Demo](./src/images/demo.png)
 
