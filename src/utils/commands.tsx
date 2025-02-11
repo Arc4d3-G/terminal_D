@@ -311,32 +311,32 @@ const mockFileSystem: Record<string, FileSystemNode> = {
       projects: {
         type: 'directory',
         content: {
-          digital_business_card: {
+          react_business_card: {
             type: 'file',
             content:
               'My first react project, a digital business card.<br>Link: <a target="_blank" href="https://dbc.dewaldbreed.co.za/">https://dbc.dewaldbreed.co.za</a>',
           },
-          metronome: {
+          js_metronome: {
             type: 'file',
             content:
               'A vanilla javascript musical metronome.<br>Link: <a target="_blank" href="https://metronome.dewaldbreed.co.za/">https://metronome.dewaldbreed.co.za</a>',
           },
-          podstream: {
+          react_podstream: {
             type: 'file',
             content:
               'My first larger scale react app, a podcast streaming site using a mock data api. Link: <a target="_blank" href="https://pod-stream.netlify.app/">https://pod-stream.netlify.app</a>',
           },
-          auth_api: {
+          express_auth_api: {
             type: 'file',
             content:
               'An express.js (node) project consisting of a user authentication system. Terminal-D\'s login` and `register` commands use this api as a proof of concept. Link: <a target="_blank" href="https://github.com/Arc4d3-G/auth-api">https://github.com/Arc4d3-G/auth-api</a>',
           },
-          iou: {
+          angular_iou: {
             type: 'file',
             content:
               'My first Angular project, in active development, is an informal debt tracking system for small groups wanting to track their `I.O.U\'s`. Link: <a target="_blank" href="https://github.com/Arc4d3-G/iou">https://github.com/Arc4d3-G/iou</a>',
           },
-          iou_api: {
+          java_iou_api: {
             type: 'file',
             content:
               'A Spring Boot (Java) project consisting of a RESTful API for the IOU project. Link: <a target="_blank" href="https://github.com/arc4d3-g/iou-api">https://github.com/arc4d3-g/iou-api</a>',
