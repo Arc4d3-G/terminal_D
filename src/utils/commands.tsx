@@ -292,24 +292,59 @@ const mockFileSystem: Record<string, FileSystemNode> = {
   '~': {
     type: 'directory',
     content: {
-      skills: { type: 'directory', content: {} },
+      skills: {
+        type: 'directory',
+        content: {
+          languages: { type: 'file', content: 'JavaScript, TypeScript, Java, C#, SQL, PHP' },
+          frameworks: {
+            type: 'file',
+            content: 'React, Angular, Spring Boot, Express.js, .NET Core',
+          },
+          tools: {
+            type: 'file',
+            content:
+              'Git, Docker, Vite, VS Code, IntelliJ IDEA, Postman, AWS, GitHub Actions, Netlify, SupaBase',
+          },
+          databases: { type: 'file', content: 'MySQL, SQLite, MongoDB' },
+        },
+      },
       projects: {
         type: 'directory',
         content: {
-          react_dbc: {
+          digital_business_card: {
             type: 'file',
             content:
-              'My first react project, a digital business card.<br>Link: <a href="https://dbc.dewaldbreed.co.za/">https://dbc.dewaldbreed.co.za/</a>',
+              'My first react project, a digital business card.<br>Link: <a target="_blank" href="https://dbc.dewaldbreed.co.za/">https://dbc.dewaldbreed.co.za</a>',
           },
-          js_metronome: {
+          metronome: {
             type: 'file',
             content:
-              'A vanilla javascript musical metronome.<br>Link: <a href="https://metronome.dewaldbreed.co.za/">https://metronome.dewaldbreed.co.za/</a>',
+              'A vanilla javascript musical metronome.<br>Link: <a target="_blank" href="https://metronome.dewaldbreed.co.za/">https://metronome.dewaldbreed.co.za</a>',
           },
-          react_podstream: {
+          podstream: {
             type: 'file',
             content:
-              'My first larger scale react app, a podcast streaming site using a mock data api. Link: <a href="https://pod-stream.netlify.app/">https://pod-stream.netlify.app/</a>',
+              'My first larger scale react app, a podcast streaming site using a mock data api. Link: <a target="_blank" href="https://pod-stream.netlify.app/">https://pod-stream.netlify.app</a>',
+          },
+          auth_api: {
+            type: 'file',
+            content:
+              'An express.js (node) project consisting of a user authentication system. Terminal-D\'s login` and `register` commands use this api as a proof of concept. Link: <a target="_blank" href="https://github.com/Arc4d3-G/auth-api">https://github.com/Arc4d3-G/auth-api</a>',
+          },
+          iou: {
+            type: 'file',
+            content:
+              'My first Angular project, in active development, is an informal debt tracking system for small groups wanting to track their `I.O.U\'s`. Link: <a target="_blank" href="https://github.com/Arc4d3-G/iou">https://github.com/Arc4d3-G/iou</a>',
+          },
+          iou_api: {
+            type: 'file',
+            content:
+              'A Spring Boot (Java) project consisting of a RESTful API for the IOU project. Link: <a target="_blank" href="https://github.com/arc4d3-g/iou-api">https://github.com/arc4d3-g/iou-api</a>',
+          },
+          java_task_manager: {
+            type: 'file',
+            content:
+              'A Java project consisting of a simple task manager with a winforms GUI and SQLite for data persistence. Link: <a target="_blank" href="https://github.com/Arc4d3-G/JavaTaskManager">https://github.com/Arc4d3-G/JavaTaskManager</a>',
           },
         },
       },
@@ -320,18 +355,18 @@ const mockFileSystem: Record<string, FileSystemNode> = {
           github: {
             type: 'file',
             content:
-              '<a href="https://github.com/Arc4d3-G" target="_blank">https://github.com/Arc4d3-G</a>',
+              '<a target="_blank" href="https://github.com/Arc4d3-G" target="_blank">https://github.com/Arc4d3-G</a>',
           },
           linkedin: {
             type: 'file',
             content:
-              '<a href="https://www.linkedin.com/in/dewald-breed-a2297a272/" target="_blank">https://www.linkedin.com/in/dewald-breed-a2297a272/</a>',
+              '<a target="_blank" href="https://www.linkedin.com/in/dewald-breed-a2297a272/" target="_blank">https://www.linkedin.com/in/dewald-breed-a2297a272</a>',
           },
-          website: {
-            type: 'file',
-            content:
-              '<a href="https://dewaldbreed.co.za" target="_blank">https://dewaldbreed.co.za</a>',
-          },
+          // website: {
+          //   type: 'file',
+          //   content:
+          //     '<a target="_blank" href="https://dewaldbreed.co.za" target="_blank">https://dewaldbreed.co.za</a>',
+          // },
         },
       },
       // resume: { type: 'file', content: 'coming soon' },
